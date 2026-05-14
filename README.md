@@ -163,6 +163,134 @@ sarif-html reports/*.sarif \
   --fail-on error
 ```
 
+The repository includes a complete example template with a very different visual
+direction from the default report:
+
+```sh
+go run ./cmd/sarif-html examples/detekt-like.sarif \
+  --title "Pixel Console SARIF" \
+  --template examples/templates/pixel-console/report.tmpl \
+  --out pixel-console-report.html
+```
+
+See [`examples/templates/pixel-console/report.tmpl`](examples/templates/pixel-console/report.tmpl)
+for a self-contained pixel-art report with embedded CSS, JavaScript filtering, a
+scrolling ticker, and scanline animations.
+
+### Template File Shape
+
+A template should render a complete HTML document. The simplest valid template
+is a single file that uses the root data object:
+
+```gotemplate
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ .Title }}</title>
+</head>
+<body>
+  <h1>{{ .Title }}</h1>
+  <p>{{ .Report.Summary.Total }} findings generated at {{ .GeneratedAt }}</p>
+  <ul>
+    {{ range .Report.Findings }}
+    <li>
+      <strong>{{ .Level }}</strong>
+      {{ .RuleID }} in {{ .Path }}:{{ line .StartLine }}
+    </li>
+    {{ end }}
+  </ul>
+</body>
+</html>
+```
+
+Use normal HTML, CSS, and JavaScript. Go's `html/template` will escape SARIF
+values according to where they are rendered, including text, attributes, URLs,
+CSS, and JavaScript contexts. Keep dynamic data inside template actions and let
+the renderer escape it:
+
+```gotemplate
+<article
+  class="finding {{ severityClass .Level }}"
+  data-search="{{ .Tool }} {{ .RuleID }} {{ .Path }} {{ .Message }}">
+  <h2>{{ .Message }}</h2>
+  {{ if .SourceLink }}
+    <a href="{{ .SourceLink }}">{{ .Path }}:{{ line .StartLine }}</a>
+  {{ else }}
+    <span>{{ .Path }}:{{ line .StartLine }}</span>
+  {{ end }}
+</article>
+```
+
+### CSS, Design, and Animation
+
+Templates may include embedded CSS. Prefer self-contained styling so the HTML
+artifact works offline in CI. This is a good place to create a completely custom
+visual language: dashboard, terminal, newspaper, pixel UI, printable audit
+sheet, team-branded report, or a dense engineering console.
+
+```gotemplate
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0b0f12;
+    --panel: #17212b;
+    --text: #e9ffcf;
+    --accent: #c8ff41;
+  }
+
+  body {
+    margin: 0;
+    background:
+      linear-gradient(90deg, rgba(200, 255, 65, 0.08) 1px, transparent 1px) 0 0 / 24px 24px,
+      var(--bg);
+    color: var(--text);
+    font: 15px/1.55 "Courier New", monospace;
+  }
+
+  .finding {
+    border: 4px solid var(--accent);
+    background: var(--panel);
+    box-shadow: 8px 8px 0 #050708;
+    animation: card-in 420ms steps(4, end) both;
+  }
+
+  @keyframes card-in {
+    from { opacity: 0; transform: translate(8px, 8px); }
+    to { opacity: 1; transform: translate(0, 0); }
+  }
+</style>
+```
+
+### JavaScript
+
+Templates may also include JavaScript for local interactions such as filtering,
+sorting, expanding sections, charts, keyboard navigation, or animations. Keep it
+offline-friendly and avoid remote scripts unless your organization explicitly
+allows them for generated CI artifacts.
+
+```gotemplate
+<input id="search" type="search" placeholder="Search findings">
+
+<script>
+  (function () {
+    const search = document.getElementById("search");
+    const cards = Array.from(document.querySelectorAll("[data-search]"));
+
+    search.addEventListener("input", () => {
+      const query = search.value.trim().toLowerCase();
+      cards.forEach((card) => {
+        const haystack = card.dataset.search.toLowerCase();
+        card.hidden = query && !haystack.includes(query);
+      });
+    });
+  })();
+</script>
+```
+
+### Modular Template Directories
+
 When the template path is a directory, `sarif-html` recursively loads files with
 `.tmpl`, `.gotmpl`, and `.html` extensions in lexical order. This allows a
 modular layout with partials:
@@ -196,6 +324,21 @@ modular layout with partials:
 </body>
 </html>
 ```
+
+### Template Authoring Checklist
+
+- Start with `<!doctype html>` and include a viewport meta tag.
+- Use `.SchemaVersion` when logging or diagnosing template compatibility.
+- Iterate over `.Report.Findings` for finding-level output.
+- Prefer `.SourceLink` or `sourceLink .` for clickable source locations.
+- Use `line .StartLine` so missing line numbers render cleanly.
+- Put values used by JavaScript into `data-*` attributes and let
+  `html/template` escape them.
+- Keep CSS and JavaScript local when the report must work as a CI artifact.
+- Treat SARIF data as untrusted; never add helpers that mark SARIF content as
+  safe HTML.
+- Treat the template file itself as trusted input; do not run templates from
+  unknown sources.
 
 Custom templates receive the versioned `sarif-html.template.v1` data contract:
 
