@@ -15,7 +15,7 @@
       <div class="tag-row">
         <span class="tag">Fast unit tests</span>
         <span class="tag is-accent">HTML rendering checks</span>
-        <span class="tag">Real fixtures next</span>
+        <span class="tag">Fixture workflow</span>
       </div>
     </header>
 
@@ -36,7 +36,7 @@
       <main class="content-body">
         <div class="section-kicker">Quality</div>
         <h2 class="content-title">What the current test suite protects</h2>
-        <p class="content-copy">The existing tests cover the core path from SARIF JSON to HTML output. This is not yet a large fixture suite, but it already protects the most likely regressions.</p>
+        <p class="content-copy">The existing tests cover the core path from SARIF JSON to HTML output, plus CLI behavior around templates, baselines, source links, snippets, and CI thresholds.</p>
 
         <h2>Run Tests</h2>
         <pre><code>go test ./...</code></pre>
@@ -56,12 +56,12 @@
           </div>
         </div>
 
-        <h2>Next Useful Tests</h2>
+        <h2>Fixture Expansion</h2>
         <p>The extensible matrix for real scanner reports lives in <a href="tested-tools.md">docs/tested-tools.md</a>. It tracks candidates, commands, status, and future fixture paths.</p>
         <ul>
-          <li>Fixtures with real reports from Detekt, Semgrep, CodeQL, and Trivy.</li>
+          <li>More checked-in reports from Detekt, Semgrep, CodeQL, and Trivy.</li>
           <li>Snapshot tests for the default HTML structure.</li>
-          <li>CLI tests for stdout, file output, custom template directories, baseline JSON roundtrips, and exit code 2 with <code>--fail-on</code>.</li>
+          <li>Additional CLI edge-case tests for stdout combinations, overwrite prompts, and unusual path layouts.</li>
           <li>More Windows path and monorepo fixtures.</li>
         </ul>
       </main>

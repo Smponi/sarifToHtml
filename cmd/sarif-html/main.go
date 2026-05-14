@@ -10,12 +10,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	htmlreport "sarif-html/internal/html"
-	"sarif-html/internal/report"
-	"sarif-html/internal/sarif"
+	htmlreport "github.com/Smponi/sarifToHtml/internal/html"
+	"github.com/Smponi/sarifToHtml/internal/report"
+	"github.com/Smponi/sarifToHtml/internal/sarif"
 )
 
-const version = "0.1.0"
+var version = "dev"
 
 // cliConfig is the fully parsed command configuration. Keeping flag parsing
 // separate from execution makes the command easier to test and keeps run focused

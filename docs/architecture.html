@@ -11,7 +11,7 @@
     <header class="hero-panel">
       <div class="eyebrow">Architecture</div>
       <h1 class="hero-title">sarif-html Docs</h1>
-      <p class="hero-copy">The current architecture deliberately separates SARIF parsing, normalized report data, the versioned template contract, and HTML rendering. That keeps the prototype small while leaving room for future output formats.</p>
+      <p class="hero-copy">The current architecture deliberately separates SARIF parsing, normalized report data, the versioned template contract, and HTML rendering. That keeps the V1 codebase small while leaving room for future output formats.</p>
       <div class="tag-row">
         <span class="tag">SARIF parser</span>
         <span class="tag is-accent">TemplateData v1</span>
@@ -35,7 +35,7 @@
 
       <main class="content-body">
         <div class="section-kicker">System</div>
-        <h2 class="content-title">How the prototype is split</h2>
+        <h2 class="content-title">How the codebase is split</h2>
         <p class="content-copy">The main flow is intentionally direct: SARIF in, findings normalized, HTML out. The CLI orchestrates file I/O and flags, while parsing, normalization, and rendering decisions live in separate packages.</p>
 
         <table>

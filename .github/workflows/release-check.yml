@@ -3,7 +3,7 @@ name: Release Check
 on:
   pull_request:
     paths:
-      - ".goreleaser.yml"
+      - ".github/goreleaser.yml"
       - ".github/workflows/release.yml"
       - ".github/workflows/release-check.yml"
       - "cmd/**"
@@ -36,4 +36,4 @@ jobs:
         uses: goreleaser/goreleaser-action@v7
         with:
           version: "~> v2"
-          args: release --snapshot --clean
+          args: release --snapshot --clean --config .github/goreleaser.yml

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"sarif-html/internal/report"
+	"github.com/Smponi/sarifToHtml/internal/report"
 )
 
 func TestRenderIncludesFindingsAndSourceLinks(t *testing.T) {

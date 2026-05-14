@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/260fbabd-946a-44bb-badf-17bf1786b966" alt="sarif-html logo" width="180">
+</p>
+
 # sarif-html
 
 `sarif-html` turns SARIF 2.1.0 files into a readable, self-contained HTML report.
@@ -6,7 +10,7 @@ SARIF is a good exchange format, but it is not a great reading experience by its
 
 ## Current Status
 
-This repository is an early prototype. The core flow works:
+This repository is ready for a `v1.0.0` open-source release once the license decision is committed. The core flow is covered by tests and CI:
 
 - Parse SARIF 2.1.0 input.
 - Normalize results into an internal finding model.
@@ -15,9 +19,17 @@ This repository is an early prototype. The core flow works:
 - Generate and apply JSON baselines so known findings can be hidden and ignored by CI gates.
 - Run CI-style gates with `--fail-on`.
 
-The public API, output design, and module path may still change before the first tagged release.
+The command-line interface and the `sarif-html.template.v1` / `sarif-html.baseline.v1` JSON contracts are intended to remain stable across the V1 line.
 
 ## Quick Start
+
+Install a tagged release with Go:
+
+```sh
+go install github.com/Smponi/sarifToHtml/cmd/sarif-html@v1.0.0
+```
+
+Or download a prebuilt archive from the GitHub Release for your platform.
 
 Run the example report:
 
@@ -90,7 +102,7 @@ sarif-html --out report.html input.sarif
 
 ## Supported SARIF Data
 
-The prototype intentionally reads a focused subset of SARIF 2.1.0:
+`sarif-html` intentionally reads a focused subset of SARIF 2.1.0:
 
 - `run.tool.driver` metadata.
 - `run.tool.driver.rules` for rule names, descriptions, and help links.
@@ -498,7 +510,7 @@ internal/sarif/      SARIF 2.1.0 parsing model
 internal/report/     Normalized finding model and summary logic
 internal/html/       Self-contained HTML renderer
 docs/                Static project documentation
-examples/            Small SARIF examples for local development
+examples/            SARIF examples, custom templates, and rendered outputs
 fixtures/            Intentionally vulnerable scanner targets
 ```
 
@@ -546,7 +558,7 @@ go run ./cmd/sarif-html examples/detekt-like.sarif \
 
 ## Real-World SARIF Fixtures
 
-The prototype currently ships with a small synthetic Detekt-like SARIF example. The next testing step is to add scanner-generated reports from real tools.
+The repository ships with a synthetic Detekt-like SARIF example and fixture targets for generating scanner reports from real tools.
 
 To avoid installing scanner CLIs locally, use the throwaway Docker workflow:
 
@@ -577,12 +589,11 @@ The generated report UI and the documentation UI are intentionally separate. The
 
 ## Roadmap
 
-- Add real-world fixtures from the candidate tools in `docs/tested-tools.md`.
+- Expand checked-in real-world fixtures from the candidate tools in `docs/tested-tools.md`.
 - Support SARIF URI base IDs more completely, especially monorepo and Windows path edge cases.
 - Add resolved-finding reporting for baselines.
 - Improve large-report performance and navigation.
 - Add optional grouping modes by file, rule, severity, and tool.
-- Add release builds for macOS, Linux, and Windows.
 - Decide and add the final open-source license before publishing.
 
 ## Open Source Readiness
@@ -598,22 +609,23 @@ Already included:
 - GoReleaser release workflow
 - Dependabot configuration
 - `.editorconfig`
-- `.golangci.yml`
+- `.github/golangci.yml`
+- `.github/goreleaser.yml`
 
-Before publishing the repository, we should still decide:
+Before publishing the repository, the remaining repository-file decision is:
 
-- Repository host and final module path, for example `github.com/<owner>/sarif-html`.
 - License, for example MIT or Apache-2.0.
-- Branch protection rules for `main`.
-- Real `CODEOWNERS` entries after the GitHub owner or maintainer team exists.
+
+After publishing, configure branch protection rules for `main` in GitHub
+repository settings.
 
 ## Releases
 
 Releases are published by pushing a semantic version tag:
 
 ```sh
-git tag v0.1.0
-git push origin v0.1.0
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 The release workflow uses GoReleaser to build Linux, macOS, and Windows binaries

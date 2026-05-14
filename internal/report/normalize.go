@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"sarif-html/internal/sarif"
+	"github.com/Smponi/sarifToHtml/internal/sarif"
 )
 
 const (

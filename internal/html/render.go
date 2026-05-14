@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"sarif-html/internal/report"
+	"github.com/Smponi/sarifToHtml/internal/report"
 )
 
 // TemplateDataVersion identifies the renderer-facing data contract available to

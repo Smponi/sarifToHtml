@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"sarif-html/internal/sarif"
+	"github.com/Smponi/sarifToHtml/internal/sarif"
 )
 
 func TestFromSARIFNormalizesFindings(t *testing.T) {
