@@ -54,6 +54,7 @@ sarif-html [flags] <input.sarif> [more-inputs.sarif...]
 | --- | --- |
 | `--out` | Output HTML file. Use `-` to write HTML to stdout. Default: `report.html`. |
 | `--title` | Report title. Default: `SARIF HTML Report`. |
+| `--template` | Custom Go `html/template` file or directory. When omitted, the built-in default template is used. |
 | `--repo-url` | Repository URL used to build clickable source links. |
 | `--revision` | Branch, tag, or commit used for source links. |
 | `--source-url-template` | Full source link template. Overrides `--repo-url` and `--revision` link generation. |
@@ -149,6 +150,88 @@ Supported placeholders:
 | `{revisionRaw}` | Raw revision value. |
 | `{lineFragment}` | `#L<line>` or `#L<start>-L<end>`, empty when no line exists. |
 
+## Custom HTML Templates
+
+By default, `sarif-html` uses its embedded self-contained report template. Pass
+`--template` to render the same normalized report data with your own Go
+`html/template` file or template directory:
+
+```sh
+sarif-html reports/*.sarif \
+  --template .github/sarif-html/report.tmpl \
+  --out report.html \
+  --fail-on error
+```
+
+When the template path is a directory, `sarif-html` recursively loads files with
+`.tmpl`, `.gotmpl`, and `.html` extensions in lexical order. This allows a
+modular layout with partials:
+
+```gotemplate
+{{ define "finding-row" }}
+<tr>
+  <td>{{ .ID }}</td>
+  <td>{{ .Level }}</td>
+  <td>{{ .Path }}:{{ line .StartLine }}</td>
+  <td>{{ .Message }}</td>
+</tr>
+{{ end }}
+```
+
+```gotemplate
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ .Title }}</title>
+</head>
+<body>
+  <h1>{{ .Title }}</h1>
+  <p>{{ .Report.Summary.Total }} findings generated at {{ .GeneratedAt }}</p>
+  <table>
+    {{ range .Report.Findings }}
+      {{ template "finding-row" . }}
+    {{ end }}
+  </table>
+</body>
+</html>
+```
+
+Custom templates receive the versioned `sarif-html.template.v1` data contract:
+
+| Field | Description |
+| --- | --- |
+| `.SchemaVersion` | Template data contract identifier. Currently `sarif-html.template.v1`. |
+| `.Title` | Effective report title. |
+| `.GeneratedAt` | UTC render timestamp in RFC3339 format. |
+| `.Report` | Normalized report with `Sources`, `Findings`, and `Summary`. |
+| `.Severities` | Ordered severity counts. |
+| `.Sources` | Ordered SARIF source counts derived from findings. |
+| `.ToolGroups` | Findings grouped by tool name. |
+| `.Rules` | Ordered rule counts. |
+| `.Files` | Ordered file counts. |
+
+Each `.Report.Findings` entry exposes the normalized finding fields used by the
+default report, including `ID`, `Source`, `Tool`, `ToolVersion`, `RuleID`,
+`RuleName`, `RuleDescription`, `RuleHelpURI`, `Level`, `Message`, `Path`,
+`URI`, `StartLine`, `StartColumn`, `EndLine`, `EndColumn`, `Snippet`,
+`Fingerprint`, `BaselineState`, `RelatedLocations`, `CodeFlows`, and
+`SourceLink`.
+
+Available template helpers:
+
+| Helper | Description |
+| --- | --- |
+| `severityClass <level>` | Maps a severity to the CSS class used by the default template. |
+| `line <number>` | Renders missing line numbers as `-`. |
+| `sourceLink <finding>` | Builds the same source URL used by the default template. |
+| `hasDetails <finding>` | Reports whether a finding has rule details, snippets, related locations, or code flows. |
+
+SARIF data is untrusted input and is escaped by Go's `html/template` when it is
+rendered. A custom template itself is trusted input: do not run templates from
+untrusted sources, because template authors can intentionally add arbitrary
+HTML, JavaScript, external assets, or links to the generated report.
+
 ## Project Layout
 
 ```text
@@ -227,6 +310,7 @@ Project documentation lives in `docs/` as static HTML with a shared stylesheet, 
 - `docs/index.html`
 - `docs/architecture.html`
 - `docs/cli.html`
+- `docs/templates.html`
 - `docs/sarif-mapping.html`
 - `docs/testing.html`
 - `docs/tested-tools.md`

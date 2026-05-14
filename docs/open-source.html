@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,7 +11,7 @@
     <header class="hero-panel">
       <div class="eyebrow">Open Source</div>
       <h1 class="hero-title">sarif-html Docs</h1>
-      <p class="hero-copy">Bevor sarif-html veroeffentlicht wird, brauchen wir neben Code und Tests auch klare Projektinformationen: README, Lizenzentscheidung, Contribution-Regeln und einen nachvollziehbaren Release-Pfad.</p>
+      <p class="hero-copy">Before sarif-html is published, the project needs clear public-facing information alongside the code and tests: a license decision, contribution rules, release notes, and a predictable release path.</p>
       <div class="tag-row">
         <span class="tag">README</span>
         <span class="tag is-accent">License decision pending</span>
@@ -26,6 +26,7 @@
           <a href="index.html">Overview</a>
           <a href="architecture.html">Architecture</a>
           <a href="cli.html">CLI</a>
+          <a href="templates.html">Templates v1</a>
           <a href="sarif-mapping.html">SARIF Mapping</a>
           <a href="testing.html">Testing</a>
           <a href="open-source.html" aria-current="page">Open Source</a>
@@ -35,29 +36,29 @@
       <main class="content-body">
         <div class="section-kicker">Publishing</div>
         <h2 class="content-title">What still needs to happen before publishing</h2>
-        <p class="content-copy">Der Prototyp ist lauffaehig, aber ein gutes Open-Source-Projekt braucht mehr als einen funktionierenden Binary-Pfad. Diese Liste haelt die verbleibenden Entscheidungen sichtbar.</p>
+        <p class="content-copy">The prototype works, but a useful open-source project needs more than a functioning binary path. This page keeps the remaining publishing decisions visible.</p>
 
         <div class="info-grid">
           <div class="info-card">
             <h3>License</h3>
-            <p>Wir muessen eine Lizenz waehlen und als <code>LICENSE</code> einchecken. Sinnvolle Kandidaten waeren MIT oder Apache-2.0.</p>
+            <p>Choose a license and commit it as <code>LICENSE</code>. MIT and Apache-2.0 are both reasonable candidates for this kind of CLI.</p>
           </div>
           <div class="info-card">
             <h3>Module path</h3>
-            <p>Vor dem ersten Release sollte <code>go.mod</code> auf den finalen Repository-Pfad zeigen, zum Beispiel <code>github.com/&lt;owner&gt;/sarif-html</code>.</p>
+            <p>Before the first release, <code>go.mod</code> should point at the final repository path, for example <code>github.com/&lt;owner&gt;/sarif-html</code>.</p>
           </div>
           <div class="info-card">
             <h3>Releases</h3>
-            <p>Wir brauchen einen Plan fuer Tags, Changelog, Cross-Platform-Binaries und Checksums.</p>
+            <p>Keep the tag, changelog, cross-platform binary, and checksum process predictable for users who install the tool in CI.</p>
           </div>
         </div>
 
-        <h2>Naechste Schritte</h2>
+        <h2>Next Steps</h2>
         <ul>
-          <li><code>LICENSE</code> nach Lizenzentscheidung.</li>
-          <li>Release Workflow fuer Cross-Platform-Binaries.</li>
-          <li><code>CHANGELOG.md</code> ab dem ersten Release aktiv pflegen.</li>
-          <li>Echte SARIF-Fixtures fuer Kompatibilitaetstests.</li>
+          <li>Add <code>LICENSE</code> after choosing the license.</li>
+          <li>Keep the release workflow ready for cross-platform binaries.</li>
+          <li>Maintain <code>CHANGELOG.md</code> from the first release onward.</li>
+          <li>Add real SARIF fixtures for compatibility tests.</li>
         </ul>
       </main>
     </div>

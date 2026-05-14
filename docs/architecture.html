@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Architektur - sarif-html</title>
+  <title>Architecture - sarif-html</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,10 +11,10 @@
     <header class="hero-panel">
       <div class="eyebrow">Architecture</div>
       <h1 class="hero-title">sarif-html Docs</h1>
-      <p class="hero-copy">Die aktuelle Architektur trennt bewusst SARIF-Parsing, internes Normalisierungsmodell und HTML-Rendering. Das haelt den Prototyp klein und laesst uns spaeter weitere Report-Ausgaben sauber ergaenzen.</p>
+      <p class="hero-copy">The current architecture deliberately separates SARIF parsing, normalized report data, the versioned template contract, and HTML rendering. That keeps the prototype small while leaving room for future output formats.</p>
       <div class="tag-row">
         <span class="tag">SARIF parser</span>
-        <span class="tag is-accent">Normalized findings</span>
+        <span class="tag is-accent">TemplateData v1</span>
         <span class="tag">Renderer boundary</span>
       </div>
     </header>
@@ -26,6 +26,7 @@
           <a href="index.html">Overview</a>
           <a href="architecture.html" aria-current="page">Architecture</a>
           <a href="cli.html">CLI</a>
+          <a href="templates.html">Templates v1</a>
           <a href="sarif-mapping.html">SARIF Mapping</a>
           <a href="testing.html">Testing</a>
           <a href="open-source.html">Open Source</a>
@@ -35,34 +36,40 @@
       <main class="content-body">
         <div class="section-kicker">System</div>
         <h2 class="content-title">How the prototype is split</h2>
-        <p class="content-copy">Die Hauptidee ist einfach: SARIF rein, Findings normalisieren, HTML raus. Die CLI bleibt dumm und orchestriert nur Datei-I/O, waehrend die inhaltlichen Entscheidungen in separaten Paketen leben.</p>
+        <p class="content-copy">The main flow is intentionally direct: SARIF in, findings normalized, HTML out. The CLI orchestrates file I/O and flags, while parsing, normalization, and rendering decisions live in separate packages.</p>
 
         <table>
           <thead>
-            <tr><th>Pfad</th><th>Verantwortung</th></tr>
+            <tr><th>Path</th><th>Responsibility</th></tr>
           </thead>
           <tbody>
-            <tr><td><code>cmd/sarif-html</code></td><td>CLI, Flags, Datei-I/O und Exit-Code-Verhalten.</td></tr>
-            <tr><td><code>internal/sarif</code></td><td>Minimales SARIF 2.1.0 Modell und JSON-Parsing.</td></tr>
-            <tr><td><code>internal/report</code></td><td>Normalisierung in Findings, Summary, Fingerprints und Merge mehrerer Reports.</td></tr>
-            <tr><td><code>internal/html</code></td><td>Self-contained HTML Rendering mit CSS und kleiner Filter-JS-Schicht.</td></tr>
-            <tr><td><code>docs</code></td><td>Projekt-Dokumentation als statische HTML-Seiten.</td></tr>
-            <tr><td><code>examples</code></td><td>Kleine SARIF-Beispiele fuer Entwicklung und Demos.</td></tr>
+            <tr><td><code>cmd/sarif-html</code></td><td>CLI flags, file I/O, CI exit-code behavior, and renderer option wiring.</td></tr>
+            <tr><td><code>internal/sarif</code></td><td>Focused SARIF 2.1.0 model and JSON parsing.</td></tr>
+            <tr><td><code>internal/report</code></td><td>Normalization into findings, summaries, fingerprints, snippets, and merged reports.</td></tr>
+            <tr><td><code>internal/html</code></td><td>Versioned template data, the embedded default template, and custom HTML rendering.</td></tr>
+            <tr><td><code>docs</code></td><td>Project documentation as static HTML pages.</td></tr>
+            <tr><td><code>examples</code></td><td>Small SARIF examples for development and demos.</td></tr>
           </tbody>
         </table>
 
-        <h2>Datenfluss</h2>
+        <h2>Data Flow</h2>
         <ol>
-          <li>Die CLI oeffnet eine oder mehrere SARIF-Dateien.</li>
-          <li><code>internal/sarif.Parse</code> validiert Version 2.1.0 und dekodiert JSON.</li>
-          <li><code>internal/report.FromSARIF</code> extrahiert Findings, Regel-Metadaten, Locations und Snippets.</li>
-          <li><code>internal/report.Merge</code> sortiert Findings und baut eine neue Summary.</li>
-          <li><code>internal/html.Render</code> erzeugt eine einzelne HTML-Datei.</li>
+          <li>The CLI opens one or more SARIF files.</li>
+          <li><code>internal/sarif.Parse</code> validates SARIF 2.1.0 and decodes JSON.</li>
+          <li><code>internal/report.FromSARIF</code> extracts findings, rule metadata, locations, and snippets.</li>
+          <li><code>internal/report.Merge</code> sorts findings and rebuilds the summary.</li>
+          <li><code>internal/html.NewTemplateData</code> builds the versioned <code>sarif-html.template.v1</code> contract.</li>
+          <li><code>internal/html.Render</code> renders either the embedded default template or an explicitly provided custom template.</li>
         </ol>
 
         <div class="note">
-          <strong>Warum diese Trennung?</strong>
-          <p>Wir wollen nicht, dass spaetere Render- oder Exportentscheidungen direkt am SARIF-JSON haengen. Das interne Report-Modell ist die Stelle, an der wir Duplikate, Severity-Logik, Fingerprints und spaetere Baseline-Zustaende kontrollieren koennen.</p>
+          <strong>Why this boundary exists</strong>
+          <p>Renderers should not depend directly on raw SARIF JSON. The internal report model is where duplicate handling, severity behavior, fingerprints, snippet hydration, and future baseline states can stay controlled.</p>
+        </div>
+
+        <div class="note">
+          <strong>Template boundary</strong>
+          <p>Custom templates use Go <code>html/template</code> and receive deterministic helpers for severity classes, line formatting, source links, and detail detection. SARIF data is escaped by default; the template file itself is trusted input.</p>
         </div>
       </main>
     </div>

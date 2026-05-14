@@ -9,6 +9,7 @@ Responsibilities:
 - Infer source link templates from explicit flags or common CI environments.
 - Load SARIF files and pass them into the report normalization pipeline.
 - Render HTML output to a file or standard output.
+- Pass an optional custom template path into the HTML renderer.
 - Return CI-friendly exit code `2` when `--fail-on` is matched.
 
 Keep business logic out of this package whenever possible. Parser behavior

@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>sarif-html Dokumentation</title>
+  <title>sarif-html Documentation</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,7 +11,7 @@
     <header class="hero-panel">
       <div class="eyebrow">Documentation</div>
       <h1 class="hero-title">sarif-html Docs</h1>
-      <p class="hero-copy">Dies ist der Ausgangspunkt fuer Produkt-, Architektur- und CLI-Dokumentation rund um sarif-html. Ziel ist eine kleine, lesbare Sammlung statischer HTML-Seiten mit einer gemeinsamen visuellen Sprache.</p>
+      <p class="hero-copy">This is the project documentation hub for sarif-html: architecture decisions, CLI behavior, template authoring, SARIF mapping, and testing guidance in one small static site.</p>
       <div class="tag-row">
         <span class="tag">Shared CSS</span>
         <span class="tag is-accent">Go CLI prototype</span>
@@ -26,6 +26,7 @@
           <a href="index.html" aria-current="page">Overview</a>
           <a href="architecture.html">Architecture</a>
           <a href="cli.html">CLI</a>
+          <a href="templates.html">Templates v1</a>
           <a href="sarif-mapping.html">SARIF Mapping</a>
           <a href="testing.html">Testing</a>
           <a href="open-source.html">Open Source</a>
@@ -35,24 +36,28 @@
       <main class="content-body">
         <div class="section-kicker">Overview</div>
         <h2 class="content-title">What this docs folder is for</h2>
-        <p class="content-copy">sarif-html soll aus SARIF 2.1.0 einen HTML-Report bauen, den Menschen gerne aufmachen. Diese Docs sind der Ort fuer Architekturentscheidungen, Mapping-Details, CLI-Verhalten und Teststrategie, ohne README-Overflow oder Tool-spezifisches Durcheinander.</p>
+        <p class="content-copy">sarif-html turns SARIF 2.1.0 into an HTML report that people can actually review. These docs keep the design rationale and user-facing contracts close to the code without overloading the root README.</p>
 
         <div class="feature-grid">
           <a class="feature-card" href="architecture.html">
             <h3>Architecture</h3>
-            <p>Wie Parser, internes Finding-Modell und HTML-Renderer zusammenspielen und wo spaeter weitere Output-Formate andocken koennen.</p>
+            <p>How the parser, normalized finding model, template contract, and HTML renderer fit together.</p>
           </a>
           <a class="feature-card" href="cli.html">
             <h3>CLI surface</h3>
-            <p>Welche Flags der Prototyp schon anbietet, wie mehrere Inputs gemerged werden und wie Source-Links sowie Fail-Thresholds funktionieren.</p>
+            <p>Supported flags, merged inputs, source links, custom templates, and CI fail thresholds.</p>
+          </a>
+          <a class="feature-card" href="templates.html">
+            <h3>Templates v1</h3>
+            <p>How to write custom Go html/template files against the versioned <code>sarif-html.template.v1</code> data contract.</p>
           </a>
           <a class="feature-card" href="testing.html">
             <h3>Testing</h3>
-            <p>Welche Kernpfade bereits abgesichert sind und welche echten SARIF-Fixtures wir als naechstes fuer mehr Sicherheit ergaenzen sollten.</p>
+            <p>What the current suite protects and which real SARIF fixtures should be added next.</p>
           </a>
           <a class="feature-card" href="open-source.html">
             <h3>Open Source</h3>
-            <p>Was vor dem Publishen noch entschieden werden muss: Lizenz, Modulpfad, Release-Prozess und Community-Dateien.</p>
+            <p>Remaining publishing decisions: license, module path, release process, and community files.</p>
           </a>
         </div>
       </main>

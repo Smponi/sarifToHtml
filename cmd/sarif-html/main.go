@@ -22,6 +22,7 @@ const version = "0.1.0"
 type cliConfig struct {
 	outPath           string
 	title             string
+	templatePath      string
 	repoURL           string
 	revision          string
 	sourceURLTemplate string
@@ -64,10 +65,11 @@ func run(args []string) error {
 		return err
 	}
 
-	linkOptions := sourceLinkOptions(config.repoURL, config.revision, config.sourceURLTemplate)
-	linkOptions.Title = config.title
+	renderOptions := sourceLinkOptions(config.repoURL, config.revision, config.sourceURLTemplate)
+	renderOptions.Title = config.title
+	renderOptions.TemplatePath = config.templatePath
 
-	output, err := htmlreport.Render(reportData, linkOptions)
+	output, err := htmlreport.Render(reportData, renderOptions)
 	if err != nil {
 		return err
 	}
@@ -87,6 +89,7 @@ func parseConfig(args []string) (cliConfig, error) {
 
 	outPath := flags.String("out", "report.html", "output HTML file path, or - for stdout")
 	title := flags.String("title", "SARIF HTML Report", "report title")
+	templatePath := flags.String("template", "", "custom Go html/template file or directory; default uses the built-in report template")
 	repoURL := flags.String("repo-url", "", "repository URL for source links")
 	revision := flags.String("revision", "", "repository revision, branch, tag, or commit for source links")
 	sourceURLTemplate := flags.String("source-url-template", "", "URL template for source links; supports {path}, {line}, {lineFragment}, and {revision}")
@@ -102,6 +105,7 @@ func parseConfig(args []string) (cliConfig, error) {
 	return cliConfig{
 		outPath:           *outPath,
 		title:             *title,
+		templatePath:      *templatePath,
 		repoURL:           *repoURL,
 		revision:          *revision,
 		sourceURLTemplate: *sourceURLTemplate,
@@ -190,6 +194,7 @@ func reorderFlags(args []string) []string {
 	valueFlags := map[string]bool{
 		"out":                 true,
 		"title":               true,
+		"template":            true,
 		"repo-url":            true,
 		"revision":            true,
 		"source-url-template": true,

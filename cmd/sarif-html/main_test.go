@@ -133,6 +133,46 @@ func TestRunHydratesMissingSnippetFromSourceRoot(t *testing.T) {
 	}
 }
 
+func TestRunAcceptsCustomTemplate(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "input.sarif")
+	templatePath := filepath.Join(dir, "report.tmpl")
+	output := filepath.Join(dir, "report.html")
+
+	if err := os.WriteFile(input, []byte(`{
+		"version": "2.1.0",
+		"runs": [
+			{
+				"tool": { "driver": { "name": "demo" } },
+				"results": [
+					{
+						"ruleId": "Rule",
+						"level": "warning",
+						"message": { "text": "Custom template message" },
+						"locations": []
+					}
+				]
+			}
+		]
+	}`), 0o644); err != nil {
+		t.Fatalf("write input: %v", err)
+	}
+	if err := os.WriteFile(templatePath, []byte(`<html><body>{{ .Title }}: {{ .Report.Summary.Total }} finding(s) from {{ .SchemaVersion }}</body></html>`), 0o644); err != nil {
+		t.Fatalf("write template: %v", err)
+	}
+
+	if err := run([]string{input, "--template", templatePath, "--title", "Team Report", "--out", output}); err != nil {
+		t.Fatalf("run returned error: %v", err)
+	}
+	html, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatalf("read output: %v", err)
+	}
+	if !strings.Contains(string(html), "Team Report: 1 finding(s) from sarif-html.template.v1") {
+		t.Fatalf("expected custom template output, got:\n%s", string(html))
+	}
+}
+
 func TestSourceLinkOptionsDetectsGitHubActions(t *testing.T) {
 	t.Setenv("GITHUB_SERVER_URL", "https://github.com")
 	t.Setenv("GITHUB_REPOSITORY", "acme/project")

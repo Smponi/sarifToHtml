@@ -1,6 +1,8 @@
 package html
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -69,8 +71,97 @@ func TestRenderIncludesFindingsAndSourceLinks(t *testing.T) {
 	}
 }
 
+func TestRenderUsesCustomTemplateFile(t *testing.T) {
+	dir := t.TempDir()
+	templatePath := filepath.Join(dir, "report.tmpl")
+	if err := os.WriteFile(templatePath, []byte(`<!doctype html>
+<html>
+<body>
+  <p id="schema">{{ .SchemaVersion }}</p>
+  <h1>{{ .Title }}</h1>
+  {{ with index .Report.Findings 0 }}
+  <a href="{{ sourceLink . }}">{{ line .StartLine }}</a>
+  <div id="message">{{ .Message }}</div>
+  {{ end }}
+</body>
+</html>`), 0o644); err != nil {
+		t.Fatalf("write template: %v", err)
+	}
+
+	reportData := report.Report{
+		Summary: report.Summary{
+			Total:      1,
+			BySeverity: map[string]int{"warning": 1},
+			ByTool:     map[string]int{"demo": 1},
+			ByRule:     map[string]int{"Rule": 1},
+			ByFile:     map[string]int{"src/App.kt": 1},
+		},
+		Findings: []report.Finding{
+			{
+				ID:        "F0001",
+				Tool:      "demo",
+				RuleID:    "Rule",
+				Level:     "warning",
+				Message:   `<script>alert("owned")</script>`,
+				Path:      "src/App.kt",
+				StartLine: 9,
+			},
+		},
+	}
+
+	output, err := Render(reportData, Options{
+		Title:             "Custom Report",
+		TemplatePath:      templatePath,
+		Revision:          "abc123",
+		SourceURLTemplate: "https://example.test/{revision}/{path}{lineFragment}",
+	})
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+	html := string(output)
+	for _, expected := range []string{
+		TemplateDataVersion,
+		"Custom Report",
+		"https://example.test/abc123/src/App.kt#L9",
+		"&lt;script&gt;alert(&#34;owned&#34;)&lt;/script&gt;",
+	} {
+		if !strings.Contains(html, expected) {
+			t.Fatalf("expected rendered HTML to contain %q, got:\n%s", expected, html)
+		}
+	}
+	if strings.Contains(html, `<script>alert("owned")</script>`) {
+		t.Fatalf("expected custom template data to be HTML escaped")
+	}
+}
+
+func TestRenderUsesCustomTemplateDirectory(t *testing.T) {
+	dir := t.TempDir()
+	partialsDir := filepath.Join(dir, "partials")
+	if err := os.MkdirAll(partialsDir, 0o755); err != nil {
+		t.Fatalf("create partials dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "report.tmpl"), []byte(`<!doctype html>
+<html><body>{{ template "summary" . }}</body></html>`), 0o644); err != nil {
+		t.Fatalf("write main template: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(partialsDir, "summary.tmpl"), []byte(`{{ define "summary" }}<strong>{{ .Report.Summary.Total }} total via {{ .SchemaVersion }}</strong>{{ end }}`), 0o644); err != nil {
+		t.Fatalf("write partial template: %v", err)
+	}
+
+	output, err := Render(report.Report{
+		Summary: report.Summary{Total: 3},
+	}, Options{TemplatePath: dir})
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+	expected := "3 total via " + TemplateDataVersion
+	if !strings.Contains(string(output), expected) {
+		t.Fatalf("expected custom directory template output to contain %q, got:\n%s", expected, string(output))
+	}
+}
+
 func TestCountBySource(t *testing.T) {
-	counts := countBySource([]report.Finding{
+	counts := countBySource([]TemplateFinding{
 		{Source: "detekt.sarif"},
 		{Source: "detekt.sarif"},
 		{Source: "semgrep.sarif"},
@@ -88,7 +179,7 @@ func TestCountBySource(t *testing.T) {
 }
 
 func TestGroupedFindingsByTool(t *testing.T) {
-	groups := groupedFindingsByTool([]report.Finding{
+	groups := groupedFindingsByTool([]TemplateFinding{
 		{ID: "F0001", Tool: "semgrep"},
 		{ID: "F0002", Tool: "detekt"},
 		{ID: "F0003", Tool: "semgrep"},

@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ .Title }}</title>
+</head>
+<body>
+  <h1>{{ .Title }}</h1>
+  <p>{{ .Report.Summary.Total }} findings generated at {{ .GeneratedAt }}</p>
+  <ul>
+    {{ range .Report.Findings }}
+      <li>
+        <strong>{{ .Level }}</strong>
+        {{ .RuleID }} in {{ .Path }}:{{ line .StartLine }}
+      </li>
+    {{ end }}
+  </ul>
+</body>
+</html>

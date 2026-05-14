@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,7 +11,7 @@
     <header class="hero-panel">
       <div class="eyebrow">CLI</div>
       <h1 class="hero-title">sarif-html Docs</h1>
-      <p class="hero-copy">Die CLI soll so leicht wie moeglich bleiben: ein oder mehrere SARIF-Files rein, eine HTML-Datei raus. Alles Weitere sind gezielte Flags fuer Repo-Links, Titel und CI-Gates.</p>
+      <p class="hero-copy">The CLI stays deliberately small: one or more SARIF files in, one HTML file out. Additional flags cover report metadata, source links, custom templates, snippet hydration, and CI gates.</p>
       <div class="tag-row">
         <span class="tag">Single binary</span>
         <span class="tag is-accent">Multiple SARIF inputs</span>
@@ -26,6 +26,7 @@
           <a href="index.html">Overview</a>
           <a href="architecture.html">Architecture</a>
           <a href="cli.html" aria-current="page">CLI</a>
+          <a href="templates.html">Templates v1</a>
           <a href="sarif-mapping.html">SARIF Mapping</a>
           <a href="testing.html">Testing</a>
           <a href="open-source.html">Open Source</a>
@@ -35,54 +36,63 @@
       <main class="content-body">
         <div class="section-kicker">Usage</div>
         <h2 class="content-title">Small surface, predictable behavior</h2>
-        <p class="content-copy">Der Prototyp akzeptiert schon heute mehrere Inputs, schreibt self-contained HTML und kann auf Wunsch den Build mit Exit-Code 2 brechen, wenn eine Severity-Schwelle erreicht wird.</p>
+        <p class="content-copy">The prototype already accepts multiple inputs, writes self-contained HTML with the default template, supports custom templates, and can fail a CI build with exit code 2 after still writing the report artifact.</p>
 
-        <h2>Basis</h2>
+        <h2>Basic Usage</h2>
         <pre><code>sarif-html input.sarif --out report.html</code></pre>
 
-        <h2>Mehrere Inputs</h2>
+        <h2>Multiple Inputs</h2>
         <pre><code>sarif-html detekt.sarif semgrep.sarif codeql.sarif --out report.html</code></pre>
 
-        <h2>Source-Links</h2>
+        <h2>Source Links</h2>
         <pre><code>sarif-html input.sarif \
   --repo-url https://github.com/acme/project \
   --revision abc123 \
   --out report.html</code></pre>
 
-        <p>Fuer GitLab verwendet der Link-Builder automatisch <code>/-/blob/</code>, fuer GitHub und andere Repository-URLs <code>/blob/</code>. In GitHub Actions und GitLab CI kann sarif-html diese Werte aus den Standard-Umgebungsvariablen ableiten.</p>
+        <p>For GitLab, the link builder automatically uses <code>/-/blob/</code>. For GitHub and most other repository URLs it uses <code>/blob/</code>. In GitHub Actions and GitLab CI, sarif-html can infer these values from standard environment variables.</p>
 
-        <h2>Source-Link-Templates</h2>
+        <h2>Source URL Templates</h2>
         <pre><code>sarif-html input.sarif \
   --revision "$GITHUB_SHA" \
   --source-url-template "https://github.com/acme/project/blob/{revision}/{path}{lineFragment}" \
   --out report.html</code></pre>
 
-        <p>Templates sind fuer Pull-Request- und Merge-Request-Kontexte gedacht, in denen der passende Ref nicht immer ein statischer Branch ist. Unterstuetzt werden unter anderem <code>{path}</code>, <code>{pathRaw}</code>, <code>{line}</code>, <code>{revision}</code> und <code>{lineFragment}</code>.</p>
+        <p>Source URL templates are useful in pull request and merge request pipelines where the correct ref is not always a static branch. Supported placeholders include <code>{path}</code>, <code>{pathRaw}</code>, <code>{line}</code>, <code>{revision}</code>, and <code>{lineFragment}</code>.</p>
 
-        <h2>Snippets nachladen</h2>
+        <h2>Snippet Hydration</h2>
         <pre><code>sarif-html reports/*.sarif \
   --source-root . \
   --source-root fixtures/scan-targets/go-bad \
   --out report.html</code></pre>
 
-        <p>Wenn ein SARIF-Resultat Datei und Zeile, aber keinen eingebetteten Snippet enthaelt, liest sarif-html die entsprechende Source-Zeile aus den angegebenen Source-Roots nach. Relative Pfade werden nur unterhalb dieser Roots gelesen.</p>
+        <p>When a SARIF result has a file path and line number but no embedded snippet, sarif-html can read the relevant source line from the configured source roots. Relative paths are only read below those roots.</p>
 
-        <h2>CI-Gates</h2>
+        <h2>Custom HTML Templates</h2>
+        <pre><code>sarif-html reports/*.sarif \
+  --template .github/sarif-html/report.tmpl \
+  --out report.html \
+  --fail-on error</code></pre>
+
+        <p>Without <code>--template</code>, sarif-html uses the embedded default template. Custom templates are Go <code>html/template</code> files or directories containing <code>.tmpl</code>, <code>.gotmpl</code>, or <code>.html</code> files. They receive the versioned <code>sarif-html.template.v1</code> data contract documented in <a href="templates.html">Templates v1</a>.</p>
+
+        <h2>CI Gates</h2>
         <pre><code>sarif-html input.sarif --out report.html --fail-on error</code></pre>
 
         <table>
           <thead>
-            <tr><th>Flag</th><th>Beschreibung</th></tr>
+            <tr><th>Flag</th><th>Description</th></tr>
           </thead>
           <tbody>
-            <tr><td><code>--out</code></td><td>Ausgabedatei. Mit <code>-</code> wird HTML auf stdout geschrieben.</td></tr>
-            <tr><td><code>--title</code></td><td>Titel im Report.</td></tr>
-            <tr><td><code>--repo-url</code></td><td>Repository-Basis-URL fuer klickbare Dateilinks.</td></tr>
-            <tr><td><code>--revision</code></td><td>Branch, Tag oder Commit fuer klickbare Dateilinks.</td></tr>
-            <tr><td><code>--source-url-template</code></td><td>Explizites Template fuer Dateilinks. Ueberschreibt die automatische Link-Erzeugung.</td></tr>
-            <tr><td><code>--source-root</code></td><td>Lokales Source-Verzeichnis zum Nachladen fehlender Snippets. Kann mehrfach angegeben werden.</td></tr>
-            <tr><td><code>--fail-on</code></td><td>Exit-Code 2, wenn ein Finding die Schwelle erreicht: <code>error</code>, <code>warning</code>, <code>note</code>, <code>none</code>.</td></tr>
-            <tr><td><code>--version</code></td><td>Gibt die CLI-Version aus.</td></tr>
+            <tr><td><code>--out</code></td><td>Output file. Use <code>-</code> to write HTML to stdout.</td></tr>
+            <tr><td><code>--title</code></td><td>Report title.</td></tr>
+            <tr><td><code>--template</code></td><td>Custom Go <code>html/template</code> file or template directory. Uses the embedded default template when omitted.</td></tr>
+            <tr><td><code>--repo-url</code></td><td>Repository base URL for clickable source links.</td></tr>
+            <tr><td><code>--revision</code></td><td>Branch, tag, or commit used for clickable source links.</td></tr>
+            <tr><td><code>--source-url-template</code></td><td>Explicit source URL template. Overrides automatic link generation.</td></tr>
+            <tr><td><code>--source-root</code></td><td>Local source directory used to hydrate missing snippets. May be repeated.</td></tr>
+            <tr><td><code>--fail-on</code></td><td>Exit with code 2 when a finding reaches the threshold: <code>error</code>, <code>warning</code>, <code>note</code>, or <code>none</code>.</td></tr>
+            <tr><td><code>--version</code></td><td>Print the CLI version.</td></tr>
           </tbody>
         </table>
       </main>

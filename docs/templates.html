@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Templates v1 - sarif-html</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="docs-page">
+    <header class="hero-panel">
+      <div class="eyebrow">Templates v1</div>
+      <h1 class="hero-title">sarif-html Docs</h1>
+      <p class="hero-copy">Custom templates let teams render the normalized SARIF report with their own layout while keeping the same parser, merge logic, source links, and CI behavior.</p>
+      <div class="tag-row">
+        <span class="tag">html/template</span>
+        <span class="tag is-accent">sarif-html.template.v1</span>
+        <span class="tag">Trusted template input</span>
+      </div>
+    </header>
+
+    <div class="content-panel">
+      <aside class="sidebar">
+        <div class="sidebar-title">Pages</div>
+        <nav class="sidebar-nav">
+          <a href="index.html">Overview</a>
+          <a href="architecture.html">Architecture</a>
+          <a href="cli.html">CLI</a>
+          <a href="templates.html" aria-current="page">Templates v1</a>
+          <a href="sarif-mapping.html">SARIF Mapping</a>
+          <a href="testing.html">Testing</a>
+          <a href="open-source.html">Open Source</a>
+        </nav>
+      </aside>
+
+      <main class="content-body">
+        <div class="section-kicker">Template authoring</div>
+        <h2 class="content-title">Writing a custom report template</h2>
+        <p class="content-copy">Templates are standard Go <code>html/template</code> files. Pass a single file for a compact template or a directory when you want reusable partials. If no template is provided, sarif-html uses the embedded default report.</p>
+
+        <h2>Run with a Template</h2>
+        <pre><code>sarif-html reports/*.sarif \
+  --template .github/sarif-html/report.tmpl \
+  --out report.html</code></pre>
+
+        <p>When <code>--template</code> points to a directory, sarif-html recursively loads files ending in <code>.tmpl</code>, <code>.gotmpl</code>, or <code>.html</code> in lexical order.</p>
+
+        <h2>Minimal Template</h2>
+        <pre><code>&lt;!doctype html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="utf-8"&gt;
+  &lt;title&gt;{{ .Title }}&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;{{ .Title }}&lt;/h1&gt;
+  &lt;p&gt;{{ .Report.Summary.Total }} findings generated at {{ .GeneratedAt }}&lt;/p&gt;
+  &lt;ul&gt;
+    {{ range .Report.Findings }}
+      &lt;li&gt;
+        &lt;strong&gt;{{ .Level }}&lt;/strong&gt;
+        {{ .RuleID }} in {{ .Path }}:{{ line .StartLine }}
+      &lt;/li&gt;
+    {{ end }}
+  &lt;/ul&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+        <h2>Modular Template Directory</h2>
+        <p>A directory template can split the main document and reusable partials into separate files.</p>
+
+        <pre><code>{{ define "finding-row" }}
+&lt;tr&gt;
+  &lt;td&gt;{{ .ID }}&lt;/td&gt;
+  &lt;td&gt;{{ .Level }}&lt;/td&gt;
+  &lt;td&gt;{{ .RuleID }}&lt;/td&gt;
+  &lt;td&gt;
+    {{ if .SourceLink }}
+      &lt;a href="{{ .SourceLink }}"&gt;{{ .Path }}:{{ line .StartLine }}&lt;/a&gt;
+    {{ else }}
+      {{ .Path }}:{{ line .StartLine }}
+    {{ end }}
+  &lt;/td&gt;
+  &lt;td&gt;{{ .Message }}&lt;/td&gt;
+&lt;/tr&gt;
+{{ end }}</code></pre>
+
+        <pre><code>&lt;!doctype html&gt;
+&lt;html lang="en"&gt;
+&lt;body&gt;
+  &lt;h1&gt;{{ .Title }}&lt;/h1&gt;
+  &lt;table&gt;
+    {{ range .Report.Findings }}
+      {{ template "finding-row" . }}
+    {{ end }}
+  &lt;/table&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+        <h2>TemplateData v1</h2>
+        <p>The current data contract is identified by <code>sarif-html.template.v1</code>. Use <code>{{ .SchemaVersion }}</code> in diagnostics or generated metadata when a template needs to assert the expected contract.</p>
+
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>.SchemaVersion</code></td><td>Template data contract identifier. Currently <code>sarif-html.template.v1</code>.</td></tr>
+            <tr><td><code>.Title</code></td><td>Effective report title after CLI and report defaults are applied.</td></tr>
+            <tr><td><code>.GeneratedAt</code></td><td>UTC render timestamp in RFC3339 format.</td></tr>
+            <tr><td><code>.Report</code></td><td>Normalized report data with <code>Title</code>, <code>Sources</code>, <code>Findings</code>, and <code>Summary</code>.</td></tr>
+            <tr><td><code>.Severities</code></td><td>Ordered severity counts, with common severities first.</td></tr>
+            <tr><td><code>.Sources</code></td><td>Ordered SARIF source counts derived from findings.</td></tr>
+            <tr><td><code>.ToolGroups</code></td><td>Findings grouped by tool name, densest groups first.</td></tr>
+            <tr><td><code>.Rules</code></td><td>Ordered rule counts.</td></tr>
+            <tr><td><code>.Files</code></td><td>Ordered file counts.</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Finding Fields</h2>
+        <p>Each <code>.Report.Findings</code> entry exposes these v1 fields:</p>
+        <table>
+          <thead>
+            <tr><th>Field group</th><th>Fields</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Identity</td><td><code>ID</code>, <code>Fingerprint</code>, <code>BaselineState</code></td></tr>
+            <tr><td>Source</td><td><code>Source</code>, <code>Tool</code>, <code>ToolVersion</code></td></tr>
+            <tr><td>Rule</td><td><code>RuleID</code>, <code>RuleName</code>, <code>RuleDescription</code>, <code>RuleHelpURI</code></td></tr>
+            <tr><td>Message</td><td><code>Level</code>, <code>Message</code></td></tr>
+            <tr><td>Location</td><td><code>Path</code>, <code>URI</code>, <code>URIBaseID</code>, <code>StartLine</code>, <code>StartColumn</code>, <code>EndLine</code>, <code>EndColumn</code>, <code>SourceLink</code></td></tr>
+            <tr><td>Evidence</td><td><code>Snippet</code>, <code>RelatedLocations</code>, <code>CodeFlows</code></td></tr>
+          </tbody>
+        </table>
+
+        <h2>Helpers</h2>
+        <table>
+          <thead>
+            <tr><th>Helper</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>severityClass &lt;level&gt;</code></td><td>Maps a normalized severity to the CSS class used by the default template.</td></tr>
+            <tr><td><code>line &lt;number&gt;</code></td><td>Renders missing line numbers as <code>-</code>.</td></tr>
+            <tr><td><code>sourceLink &lt;finding&gt;</code></td><td>Builds a source URL for a finding using the same link options as the default template.</td></tr>
+            <tr><td><code>hasDetails &lt;finding&gt;</code></td><td>Reports whether a finding has rule details, snippets, related locations, or code flows.</td></tr>
+          </tbody>
+        </table>
+
+        <div class="note">
+          <strong>Security model</strong>
+          <p>SARIF data is untrusted input and is escaped by Go <code>html/template</code>. A custom template is trusted input: do not run templates from untrusted sources, because template authors can intentionally add arbitrary HTML, JavaScript, external assets, or links to the generated report.</p>
+        </div>
+
+        <div class="note">
+          <strong>Compatibility</strong>
+          <p>Compatible additions can extend <code>sarif-html.template.v1</code>. Breaking changes should introduce a new schema version so existing templates continue to have a clear contract.</p>
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>
