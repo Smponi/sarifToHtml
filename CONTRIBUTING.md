@@ -62,7 +62,7 @@ go run ./cmd/sarif-html examples/detekt-like.sarif --out report.html
 - Improve URI normalization and `uriBaseId` support.
 - Add baseline comparison support.
 - Improve HTML report filtering and grouping.
-- Add release automation once the module path and license are final.
+- Keep release automation, module path, and license metadata aligned before tagging.
 
 ## Before Opening a Pull Request
 

@@ -99,7 +99,7 @@ case "$target" in
   all)
     golangci_lint
     gosec
-    # govulncheck
+    govulncheck
     trivy_fs
     grype_fs
     osv_scanner

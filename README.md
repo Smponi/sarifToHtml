@@ -10,7 +10,7 @@ SARIF is a good exchange format, but it is not a great reading experience by its
 
 ## Current Status
 
-This repository is ready for a `v1.0.0` open-source release once the license decision is committed. The core flow is covered by tests and CI:
+This repository is ready for a `v1.0.0` open-source release. The core flow is covered by tests and CI:
 
 - Parse SARIF 2.1.0 input.
 - Normalize results into an internal finding model.
@@ -589,12 +589,12 @@ The generated report UI and the documentation UI are intentionally separate. The
 
 ## Roadmap
 
-- Expand checked-in real-world fixtures from the candidate tools in `docs/tested-tools.md`.
+- Commit curated SARIF fixtures for the tested Docker scanner workflow.
+- Add CodeQL and IaC-specific scanner fixtures from the candidate tools in `docs/tested-tools.md`.
 - Support SARIF URI base IDs more completely, especially monorepo and Windows path edge cases.
 - Add resolved-finding reporting for baselines.
 - Improve large-report performance and navigation.
 - Add optional grouping modes by file, rule, severity, and tool.
-- Decide and add the final open-source license before publishing.
 
 ## Open Source Readiness
 
@@ -603,6 +603,7 @@ Already included:
 - `README.md`
 - `CONTRIBUTING.md`
 - `CHANGELOG.md`
+- `LICENSE`
 - GitHub issue templates
 - GitHub pull request template
 - GitHub Actions CI workflow
@@ -611,10 +612,6 @@ Already included:
 - `.editorconfig`
 - `.github/golangci.yml`
 - `.github/goreleaser.yml`
-
-Before publishing the repository, the remaining repository-file decision is:
-
-- License, for example MIT or Apache-2.0.
 
 After publishing, configure branch protection rules for `main` in GitHub
 repository settings.
@@ -635,4 +632,4 @@ build through `release-check.yml`.
 
 ## License
 
-No license has been selected yet. Choose and add a `LICENSE` file before publishing this project as open source.
+Licensed under the Apache License, Version 2.0. See [`LICENSE`](LICENSE).
