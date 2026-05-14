@@ -8,10 +8,13 @@ import (
 	"strings"
 )
 
+// maxSnippetLines keeps hydrated snippets useful in the report without letting
+// one finding turn a compact HTML artifact into a large source-code dump.
 const maxSnippetLines = 20
 
 // HydrateSnippets loads source snippets for findings whose SARIF result did not
-// already include one. It only reads relative paths below the provided roots.
+// already include one. It only reads repository-relative paths below the
+// provided roots, so SARIF files cannot cause arbitrary local file reads.
 func HydrateSnippets(reportData *Report, roots []string) error {
 	if reportData == nil {
 		return nil
@@ -56,6 +59,10 @@ func cleanSourceRoots(roots []string) []string {
 	return cleaned
 }
 
+// readSnippet resolves a finding path against each source root and returns the
+// first matching snippet. Absolute paths and traversal attempts are skipped
+// instead of producing hard failures, because SARIF from CI often contains paths
+// that do not exist on the machine rendering the report.
 func readSnippet(roots []string, findingPath string, startLine, endLine int) (string, error) {
 	cleanPath := strings.TrimLeft(filepath.Clean(strings.ReplaceAll(findingPath, "\\", string(filepath.Separator))), string(filepath.Separator))
 	if cleanPath == "." || cleanPath == "" || isAbsolutePath(strings.ReplaceAll(findingPath, "\\", "/")) {
@@ -78,6 +85,8 @@ func readSnippet(roots []string, findingPath string, startLine, endLine int) (st
 	return "", nil
 }
 
+// isBelowRoot verifies the resolved candidate still lives lexically inside its
+// configured root after filepath cleaning.
 func isBelowRoot(root, candidate string) bool {
 	relative, err := filepath.Rel(root, candidate)
 	if err != nil {
@@ -86,6 +95,9 @@ func isBelowRoot(root, candidate string) bool {
 	return relative == "." || (!strings.HasPrefix(relative, ".."+string(filepath.Separator)) && relative != "..")
 }
 
+// readSnippetFromFile reads the requested line range and caps it to
+// maxSnippetLines. The bool return distinguishes "file not found or no lines"
+// from a real read error.
 func readSnippetFromFile(path string, startLine, endLine int) (string, bool, error) {
 	file, err := os.Open(path)
 	if os.IsNotExist(err) {

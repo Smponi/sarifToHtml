@@ -14,13 +14,19 @@ import (
 
 // Options controls report metadata and source link generation.
 type Options struct {
-	Title             string
-	RepoURL           string
-	Revision          string
+	// Title overrides reportData.Title when non-empty.
+	Title string
+	// RepoURL and Revision build provider-specific source links when no custom
+	// SourceURLTemplate is provided.
+	RepoURL  string
+	Revision string
+	// SourceURLTemplate is the most flexible linking mode and supports
+	// placeholders such as {path}, {revision}, and {lineFragment}.
 	SourceURLTemplate string
 }
 
-// Render turns reportData into a self-contained HTML document.
+// Render turns reportData into a self-contained HTML document. The generated
+// bytes contain all CSS and JavaScript needed to inspect the report offline.
 func Render(reportData report.Report, options Options) ([]byte, error) {
 	if options.Title == "" {
 		options.Title = reportData.Title
@@ -81,6 +87,9 @@ type toolGroup struct {
 	Findings []report.Finding
 }
 
+// orderedCounts returns preferred names first, then every remaining key in
+// lexical order. This keeps severity cards predictable while preserving stable
+// ordering for dynamic facets such as tools and files.
 func orderedCounts(values map[string]int, preferred []string) []count {
 	result := make([]count, 0, len(values))
 	seen := map[string]bool{}
@@ -104,6 +113,8 @@ func orderedCounts(values map[string]int, preferred []string) []count {
 	return result
 }
 
+// countBySource derives source counts from findings rather than trusting report
+// metadata, which keeps the facet accurate after merging.
 func countBySource(findings []report.Finding) map[string]int {
 	result := map[string]int{}
 	for _, finding := range findings {
@@ -116,6 +127,8 @@ func countBySource(findings []report.Finding) map[string]int {
 	return result
 }
 
+// groupedFindingsByTool powers the compact dashboard view. Groups with more
+// findings appear first so the densest tool output is easiest to spot.
 func groupedFindingsByTool(findings []report.Finding) []toolGroup {
 	byTool := map[string][]report.Finding{}
 	for _, finding := range findings {
@@ -139,6 +152,7 @@ func groupedFindingsByTool(findings []report.Finding) []toolGroup {
 	return groups
 }
 
+// severityClass maps normalized severities to CSS classes used by the template.
 func severityClass(level string) string {
 	switch strings.ToLower(level) {
 	case "error":
@@ -154,6 +168,7 @@ func severityClass(level string) string {
 	}
 }
 
+// line formats absent SARIF line numbers as a compact placeholder for tables.
 func line(value int) string {
 	if value <= 0 {
 		return "-"
@@ -161,10 +176,14 @@ func line(value int) string {
 	return fmt.Sprint(value)
 }
 
+// hasDetails controls whether a finding renders the collapsible detail section.
 func hasDetails(finding report.Finding) bool {
 	return finding.RuleDescription != "" || finding.RuleHelpURI != "" || finding.Snippet != "" || len(finding.RelatedLocations) > 0 || len(finding.CodeFlows) > 0
 }
 
+// sourceLink returns the best clickable location for a finding. Explicit HTTP
+// SARIF URIs win, followed by custom templates, then GitHub/GitLab-style repo
+// links when repository metadata is available.
 func sourceLink(finding report.Finding, options Options) string {
 	if strings.HasPrefix(finding.URI, "http://") || strings.HasPrefix(finding.URI, "https://") {
 		return finding.URI
@@ -191,6 +210,8 @@ func sourceLink(finding report.Finding, options Options) string {
 	return fmt.Sprintf("%s/blob/%s/%s%s", base, url.PathEscape(options.Revision), escapedPath, lineFragment(finding))
 }
 
+// sourceLinkFromTemplate replaces documented placeholders without trying to
+// parse the URL. This keeps custom schemes such as editor:// usable.
 func sourceLinkFromTemplate(template string, finding report.Finding, options Options) string {
 	replacements := map[string]string{
 		"{path}":         escapePath(finding.Path),
@@ -213,6 +234,7 @@ func sourceLinkFromTemplate(template string, finding report.Finding, options Opt
 	return result
 }
 
+// escapePath escapes path segments while preserving slashes between segments.
 func escapePath(rawPath string) string {
 	escapedPath := strings.TrimLeft(rawPath, "/")
 	parts := strings.Split(escapedPath, "/")
@@ -222,6 +244,7 @@ func escapePath(rawPath string) string {
 	return strings.Join(parts, "/")
 }
 
+// lineFragment returns the GitHub/GitLab-style line anchor for a finding.
 func lineFragment(finding report.Finding) string {
 	if finding.StartLine <= 0 {
 		return ""
@@ -232,6 +255,8 @@ func lineFragment(finding report.Finding) string {
 	return fmt.Sprintf("#L%d", finding.StartLine)
 }
 
+// positiveInt renders SARIF's optional numeric fields as empty placeholders
+// when their zero value means "not provided".
 func positiveInt(value int) string {
 	if value <= 0 {
 		return ""

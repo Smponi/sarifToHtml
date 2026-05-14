@@ -17,7 +17,9 @@ const (
 	levelNone    = "none"
 )
 
-// FromSARIF converts a parsed SARIF log into a deterministic report.
+// FromSARIF converts a parsed SARIF log into a deterministic report. It keeps
+// the SARIF-specific interpretation in one package so renderers can work with a
+// compact, stable finding model instead of the full SARIF object graph.
 func FromSARIF(log *sarif.Log, sourceName string) Report {
 	result := Report{
 		Sources: []string{sourceName},
@@ -38,6 +40,10 @@ func FromSARIF(log *sarif.Log, sourceName string) Report {
 			artifact := location.PhysicalLocation.ArtifactLocation
 			region := location.PhysicalLocation.Region
 			context := location.PhysicalLocation.ContextRegion
+
+			// Some tools only provide ruleIndex, some only ruleId, and some emit
+			// incomplete descriptors. Prefer the result rule ID, then the resolved
+			// descriptor ID, and finally a stable placeholder for grouping.
 			ruleID := strings.TrimSpace(sarifResult.RuleID)
 			if ruleID == "" && rule.ID != "" {
 				ruleID = rule.ID
@@ -83,6 +89,8 @@ func FromSARIF(log *sarif.Log, sourceName string) Report {
 				finding.Message = finding.RuleDescription
 			}
 			if finding.Fingerprint == "" {
+				// A deterministic fallback fingerprint keeps reports stable even
+				// when a scanner does not emit SARIF fingerprints.
 				finding.Fingerprint = stableFingerprint(finding.Tool, finding.RuleID, finding.Path, fmt.Sprint(finding.StartLine), finding.Message)
 			}
 			finding.RelatedLocations = normalizeRelated(sarifResult.RelatedLocations, uriBaseIDs)
@@ -99,6 +107,8 @@ func FromSARIF(log *sarif.Log, sourceName string) Report {
 }
 
 // Merge combines several reports into one sorted report and rebuilds summaries.
+// Summaries are intentionally recomputed from the merged findings rather than
+// copied, which prevents stale counts after sorting or future filtering changes.
 func Merge(title string, reports ...Report) Report {
 	merged := Report{
 		Title:   title,
@@ -131,6 +141,8 @@ func newSummary() Summary {
 	}
 }
 
+// indexRules provides both SARIF rule lookup paths: explicit ruleId and
+// ruleIndex. Different scanners lean on different parts of the SARIF schema.
 func indexRules(rules []sarif.ReportingDescriptor) (map[string]sarif.ReportingDescriptor, map[int]sarif.ReportingDescriptor) {
 	byID := map[string]sarif.ReportingDescriptor{}
 	byIndex := map[int]sarif.ReportingDescriptor{}
@@ -143,6 +155,8 @@ func indexRules(rules []sarif.ReportingDescriptor) (map[string]sarif.ReportingDe
 	return byID, byIndex
 }
 
+// resolveRule returns the best rule descriptor for a result without treating a
+// missing descriptor as an error. SARIF producers often emit partial rule data.
 func resolveRule(result sarif.Result, byID map[string]sarif.ReportingDescriptor, byIndex map[int]sarif.ReportingDescriptor) sarif.ReportingDescriptor {
 	if result.RuleID != "" {
 		if rule, ok := byID[result.RuleID]; ok {
@@ -157,6 +171,8 @@ func resolveRule(result sarif.Result, byID map[string]sarif.ReportingDescriptor,
 	return sarif.ReportingDescriptor{}
 }
 
+// firstLocation returns the primary location used by the report UI. Additional
+// context remains available through related locations and code flows.
 func firstLocation(locations []sarif.Location) sarif.Location {
 	if len(locations) == 0 {
 		return sarif.Location{}
@@ -164,6 +180,8 @@ func firstLocation(locations []sarif.Location) sarif.Location {
 	return locations[0]
 }
 
+// normalizeRelated converts SARIF related locations into the smaller report
+// representation while applying the same path resolution as primary locations.
 func normalizeRelated(locations []sarif.Location, uriBaseIDs map[string]sarif.ArtifactLocation) []RelatedLocation {
 	related := make([]RelatedLocation, 0, len(locations))
 	for _, location := range locations {
@@ -180,6 +198,8 @@ func normalizeRelated(locations []sarif.Location, uriBaseIDs map[string]sarif.Ar
 	return related
 }
 
+// normalizeCodeFlows flattens SARIF thread flows into displayable paths. Empty
+// flows are dropped because they add noise without actionable evidence.
 func normalizeCodeFlows(codeFlows []sarif.CodeFlow, uriBaseIDs map[string]sarif.ArtifactLocation) []CodeFlow {
 	flows := make([]CodeFlow, 0, len(codeFlows))
 	for _, codeFlow := range codeFlows {
@@ -205,6 +225,7 @@ func normalizeCodeFlows(codeFlows []sarif.CodeFlow, uriBaseIDs map[string]sarif.
 	return flows
 }
 
+// addSummary updates every aggregate that the report UI exposes.
 func addSummary(summary *Summary, finding Finding) {
 	summary.Total++
 	summary.BySeverity[finding.Level]++
@@ -215,6 +236,8 @@ func addSummary(summary *Summary, finding Finding) {
 	}
 }
 
+// sortFindings makes report output deterministic and review-oriented: highest
+// severity first, then file position, then rule for stable tie-breaking.
 func sortFindings(findings []Finding) {
 	sort.SliceStable(findings, func(i, j int) bool {
 		left, right := findings[i], findings[j]
@@ -231,12 +254,16 @@ func sortFindings(findings []Finding) {
 	})
 }
 
+// reassignIDs gives findings compact report-local anchors after sorting.
 func reassignIDs(findings []Finding) {
 	for index := range findings {
 		findings[index].ID = fmt.Sprintf("F%04d", index+1)
 	}
 }
 
+// normalizeLevel maps missing or unknown SARIF levels to warning. That mirrors
+// common scanner behavior where an omitted level still deserves reviewer
+// attention but should not be treated as the highest severity.
 func normalizeLevel(level string) string {
 	switch strings.ToLower(strings.TrimSpace(level)) {
 	case levelError:
@@ -252,6 +279,7 @@ func normalizeLevel(level string) string {
 	}
 }
 
+// severityRank defines the ordering used for sorting and --fail-on thresholds.
 func severityRank(level string) int {
 	switch level {
 	case levelError:
@@ -267,6 +295,8 @@ func severityRank(level string) int {
 	}
 }
 
+// messageText prefers plain text but falls back to Markdown when tools only
+// populate SARIF markdown messages.
 func messageText(message sarif.Message) string {
 	if strings.TrimSpace(message.Text) != "" {
 		return strings.TrimSpace(message.Text)
@@ -274,6 +304,9 @@ func messageText(message sarif.Message) string {
 	return strings.TrimSpace(message.Markdown)
 }
 
+// normalizePath turns SARIF URIs into slash-separated, displayable paths. It
+// strips harmless local prefixes and decodes escaped URI segments, but leaves
+// absolute paths recognizable so later code can avoid leaking local CI roots.
 func normalizePath(rawURI string) string {
 	if rawURI == "" {
 		return ""
@@ -295,6 +328,9 @@ func normalizePath(rawURI string) string {
 	return rawURI
 }
 
+// resolveArtifactPath combines a result artifact URI with its uriBaseId chain
+// when the chain is relative. Absolute CI checkout roots are intentionally not
+// prepended; the report should show repository-relative paths where possible.
 func resolveArtifactPath(artifact sarif.ArtifactLocation, uriBaseIDs map[string]sarif.ArtifactLocation) string {
 	artifactPath := normalizePath(artifact.URI)
 	if artifact.URIBaseID == "" || len(uriBaseIDs) == 0 {
@@ -314,6 +350,9 @@ func resolveArtifactPath(artifact sarif.ArtifactLocation, uriBaseIDs map[string]
 	return normalizePath(path.Join(basePath, artifactPath))
 }
 
+// resolveURIBasePath walks nested SARIF uriBaseId definitions and detects
+// cycles. The returned bool tells callers whether the chain was valid enough to
+// use; invalid chains fall back to the artifact path alone.
 func resolveURIBasePath(id string, uriBaseIDs map[string]sarif.ArtifactLocation, seen map[string]bool) (string, bool) {
 	if seen[id] {
 		return "", false
@@ -342,6 +381,7 @@ func resolveURIBasePath(id string, uriBaseIDs map[string]sarif.ArtifactLocation,
 	return normalizePath(path.Join(parentPath, basePath)), true
 }
 
+// isAbsolutePath recognizes Unix and normalized Windows absolute paths.
 func isAbsolutePath(value string) bool {
 	if strings.HasPrefix(value, "/") {
 		return true
@@ -352,6 +392,7 @@ func isAbsolutePath(value string) bool {
 	return false
 }
 
+// firstNonEmpty returns the first non-blank value after trimming whitespace.
 func firstNonEmpty(values ...string) string {
 	for _, value := range values {
 		if strings.TrimSpace(value) != "" {
