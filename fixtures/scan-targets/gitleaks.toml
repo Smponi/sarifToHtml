@@ -1,0 +1,13 @@
+title = "SARIF fixture gitleaks rules"
+
+[[rules]]
+id = "sarif-fixture-fake-secret"
+description = "Intentionally fake fixture secret"
+regex = '''not-a-real-[A-Za-z0-9_-]{8,}'''
+entropy = 0.0
+
+[[rules]]
+id = "sarif-fixture-fake-token"
+description = "Intentionally fake fixture token"
+regex = '''fixture-[A-Za-z0-9_-]*token[A-Za-z0-9_-]*'''
+entropy = 0.0

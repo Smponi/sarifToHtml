@@ -1,0 +1,29 @@
+build:
+  maxIssues: 0
+
+complexity:
+  active: true
+  ComplexMethod:
+    active: true
+    threshold: 3
+  LongMethod:
+    active: true
+    threshold: 20
+
+style:
+  active: true
+  MagicNumber:
+    active: true
+    ignoreNumbers: ['-1', '0', '1', '2']
+  WildcardImport:
+    active: true
+  ReturnCount:
+    active: true
+    max: 1
+
+exceptions:
+  active: true
+  TooGenericExceptionCaught:
+    active: true
+  SwallowedException:
+    active: true

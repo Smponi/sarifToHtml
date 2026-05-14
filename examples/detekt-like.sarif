@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "detekt",
+          "semanticVersion": "1.23.6",
+          "rules": [
+            {
+              "id": "ComplexMethod",
+              "name": "Complex Method",
+              "shortDescription": {
+                "text": "Reports methods with high cyclomatic complexity."
+              },
+              "helpUri": "https://detekt.dev/docs/rules/complexity"
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "ComplexMethod",
+          "level": "warning",
+          "message": {
+            "text": "Function calculateScore is too complex."
+          },
+          "partialFingerprints": {
+            "primaryLocationLineHash": "example-complex-method"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/main/kotlin/Score.kt"
+                },
+                "region": {
+                  "startLine": 42,
+                  "startColumn": 5,
+                  "snippet": {
+                    "text": "fun calculateScore(input: Input): Int {"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

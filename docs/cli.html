@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CLI - sarif-html</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="docs-page">
+    <header class="hero-panel">
+      <div class="eyebrow">CLI</div>
+      <h1 class="hero-title">sarif-html Docs</h1>
+      <p class="hero-copy">Die CLI soll so leicht wie moeglich bleiben: ein oder mehrere SARIF-Files rein, eine HTML-Datei raus. Alles Weitere sind gezielte Flags fuer Repo-Links, Titel und CI-Gates.</p>
+      <div class="tag-row">
+        <span class="tag">Single binary</span>
+        <span class="tag is-accent">Multiple SARIF inputs</span>
+        <span class="tag">Fail-on threshold</span>
+      </div>
+    </header>
+
+    <div class="content-panel">
+      <aside class="sidebar">
+        <div class="sidebar-title">Pages</div>
+        <nav class="sidebar-nav">
+          <a href="index.html">Overview</a>
+          <a href="architecture.html">Architecture</a>
+          <a href="cli.html" aria-current="page">CLI</a>
+          <a href="sarif-mapping.html">SARIF Mapping</a>
+          <a href="testing.html">Testing</a>
+          <a href="open-source.html">Open Source</a>
+        </nav>
+      </aside>
+
+      <main class="content-body">
+        <div class="section-kicker">Usage</div>
+        <h2 class="content-title">Small surface, predictable behavior</h2>
+        <p class="content-copy">Der Prototyp akzeptiert schon heute mehrere Inputs, schreibt self-contained HTML und kann auf Wunsch den Build mit Exit-Code 2 brechen, wenn eine Severity-Schwelle erreicht wird.</p>
+
+        <h2>Basis</h2>
+        <pre><code>sarif-html input.sarif --out report.html</code></pre>
+
+        <h2>Mehrere Inputs</h2>
+        <pre><code>sarif-html detekt.sarif semgrep.sarif codeql.sarif --out report.html</code></pre>
+
+        <h2>Source-Links</h2>
+        <pre><code>sarif-html input.sarif \
+  --repo-url https://github.com/acme/project \
+  --revision abc123 \
+  --out report.html</code></pre>
+
+        <p>Fuer GitLab verwendet der Link-Builder automatisch <code>/-/blob/</code>, fuer GitHub und andere Repository-URLs <code>/blob/</code>. In GitHub Actions und GitLab CI kann sarif-html diese Werte aus den Standard-Umgebungsvariablen ableiten.</p>
+
+        <h2>Source-Link-Templates</h2>
+        <pre><code>sarif-html input.sarif \
+  --revision "$GITHUB_SHA" \
+  --source-url-template "https://github.com/acme/project/blob/{revision}/{path}{lineFragment}" \
+  --out report.html</code></pre>
+
+        <p>Templates sind fuer Pull-Request- und Merge-Request-Kontexte gedacht, in denen der passende Ref nicht immer ein statischer Branch ist. Unterstuetzt werden unter anderem <code>{path}</code>, <code>{pathRaw}</code>, <code>{line}</code>, <code>{revision}</code> und <code>{lineFragment}</code>.</p>
+
+        <h2>Snippets nachladen</h2>
+        <pre><code>sarif-html reports/*.sarif \
+  --source-root . \
+  --source-root fixtures/scan-targets/go-bad \
+  --out report.html</code></pre>
+
+        <p>Wenn ein SARIF-Resultat Datei und Zeile, aber keinen eingebetteten Snippet enthaelt, liest sarif-html die entsprechende Source-Zeile aus den angegebenen Source-Roots nach. Relative Pfade werden nur unterhalb dieser Roots gelesen.</p>
+
+        <h2>CI-Gates</h2>
+        <pre><code>sarif-html input.sarif --out report.html --fail-on error</code></pre>
+
+        <table>
+          <thead>
+            <tr><th>Flag</th><th>Beschreibung</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>--out</code></td><td>Ausgabedatei. Mit <code>-</code> wird HTML auf stdout geschrieben.</td></tr>
+            <tr><td><code>--title</code></td><td>Titel im Report.</td></tr>
+            <tr><td><code>--repo-url</code></td><td>Repository-Basis-URL fuer klickbare Dateilinks.</td></tr>
+            <tr><td><code>--revision</code></td><td>Branch, Tag oder Commit fuer klickbare Dateilinks.</td></tr>
+            <tr><td><code>--source-url-template</code></td><td>Explizites Template fuer Dateilinks. Ueberschreibt die automatische Link-Erzeugung.</td></tr>
+            <tr><td><code>--source-root</code></td><td>Lokales Source-Verzeichnis zum Nachladen fehlender Snippets. Kann mehrfach angegeben werden.</td></tr>
+            <tr><td><code>--fail-on</code></td><td>Exit-Code 2, wenn ein Finding die Schwelle erreicht: <code>error</code>, <code>warning</code>, <code>note</code>, <code>none</code>.</td></tr>
+            <tr><td><code>--version</code></td><td>Gibt die CLI-Version aus.</td></tr>
+          </tbody>
+        </table>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

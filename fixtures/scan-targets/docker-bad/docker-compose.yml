@@ -1,0 +1,8 @@
+services:
+  fixture-app:
+    build: .
+    privileged: true
+    environment:
+      DATABASE_PASSWORD: not-a-real-password-for-sarif-fixtures
+    ports:
+      - "22:22"

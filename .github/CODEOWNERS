@@ -1,0 +1,8 @@
+# Enable this after the repository owner or maintainer team exists on GitHub.
+# Replace @OWNER_OR_TEAM with a real user or team, then configure branch
+# protection to require CODEOWNERS review.
+#
+# /.github/ @OWNER_OR_TEAM
+# /.goreleaser.yml @OWNER_OR_TEAM
+# /.golangci.yml @OWNER_OR_TEAM
+# /.editorconfig @OWNER_OR_TEAM

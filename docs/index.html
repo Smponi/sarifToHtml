@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>sarif-html Dokumentation</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="docs-page">
+    <header class="hero-panel">
+      <div class="eyebrow">Documentation</div>
+      <h1 class="hero-title">sarif-html Docs</h1>
+      <p class="hero-copy">Dies ist der Ausgangspunkt fuer Produkt-, Architektur- und CLI-Dokumentation rund um sarif-html. Ziel ist eine kleine, lesbare Sammlung statischer HTML-Seiten mit einer gemeinsamen visuellen Sprache.</p>
+      <div class="tag-row">
+        <span class="tag">Shared CSS</span>
+        <span class="tag is-accent">Go CLI prototype</span>
+        <span class="tag">Static HTML output</span>
+      </div>
+    </header>
+
+    <div class="content-panel">
+      <aside class="sidebar">
+        <div class="sidebar-title">Pages</div>
+        <nav class="sidebar-nav">
+          <a href="index.html" aria-current="page">Overview</a>
+          <a href="architecture.html">Architecture</a>
+          <a href="cli.html">CLI</a>
+          <a href="sarif-mapping.html">SARIF Mapping</a>
+          <a href="testing.html">Testing</a>
+          <a href="open-source.html">Open Source</a>
+        </nav>
+      </aside>
+
+      <main class="content-body">
+        <div class="section-kicker">Overview</div>
+        <h2 class="content-title">What this docs folder is for</h2>
+        <p class="content-copy">sarif-html soll aus SARIF 2.1.0 einen HTML-Report bauen, den Menschen gerne aufmachen. Diese Docs sind der Ort fuer Architekturentscheidungen, Mapping-Details, CLI-Verhalten und Teststrategie, ohne README-Overflow oder Tool-spezifisches Durcheinander.</p>
+
+        <div class="feature-grid">
+          <a class="feature-card" href="architecture.html">
+            <h3>Architecture</h3>
+            <p>Wie Parser, internes Finding-Modell und HTML-Renderer zusammenspielen und wo spaeter weitere Output-Formate andocken koennen.</p>
+          </a>
+          <a class="feature-card" href="cli.html">
+            <h3>CLI surface</h3>
+            <p>Welche Flags der Prototyp schon anbietet, wie mehrere Inputs gemerged werden und wie Source-Links sowie Fail-Thresholds funktionieren.</p>
+          </a>
+          <a class="feature-card" href="testing.html">
+            <h3>Testing</h3>
+            <p>Welche Kernpfade bereits abgesichert sind und welche echten SARIF-Fixtures wir als naechstes fuer mehr Sicherheit ergaenzen sollten.</p>
+          </a>
+          <a class="feature-card" href="open-source.html">
+            <h3>Open Source</h3>
+            <p>Was vor dem Publishen noch entschieden werden muss: Lizenz, Modulpfad, Release-Prozess und Community-Dateien.</p>
+          </a>
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

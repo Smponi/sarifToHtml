@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architektur - sarif-html</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="docs-page">
+    <header class="hero-panel">
+      <div class="eyebrow">Architecture</div>
+      <h1 class="hero-title">sarif-html Docs</h1>
+      <p class="hero-copy">Die aktuelle Architektur trennt bewusst SARIF-Parsing, internes Normalisierungsmodell und HTML-Rendering. Das haelt den Prototyp klein und laesst uns spaeter weitere Report-Ausgaben sauber ergaenzen.</p>
+      <div class="tag-row">
+        <span class="tag">SARIF parser</span>
+        <span class="tag is-accent">Normalized findings</span>
+        <span class="tag">Renderer boundary</span>
+      </div>
+    </header>
+
+    <div class="content-panel">
+      <aside class="sidebar">
+        <div class="sidebar-title">Pages</div>
+        <nav class="sidebar-nav">
+          <a href="index.html">Overview</a>
+          <a href="architecture.html" aria-current="page">Architecture</a>
+          <a href="cli.html">CLI</a>
+          <a href="sarif-mapping.html">SARIF Mapping</a>
+          <a href="testing.html">Testing</a>
+          <a href="open-source.html">Open Source</a>
+        </nav>
+      </aside>
+
+      <main class="content-body">
+        <div class="section-kicker">System</div>
+        <h2 class="content-title">How the prototype is split</h2>
+        <p class="content-copy">Die Hauptidee ist einfach: SARIF rein, Findings normalisieren, HTML raus. Die CLI bleibt dumm und orchestriert nur Datei-I/O, waehrend die inhaltlichen Entscheidungen in separaten Paketen leben.</p>
+
+        <table>
+          <thead>
+            <tr><th>Pfad</th><th>Verantwortung</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>cmd/sarif-html</code></td><td>CLI, Flags, Datei-I/O und Exit-Code-Verhalten.</td></tr>
+            <tr><td><code>internal/sarif</code></td><td>Minimales SARIF 2.1.0 Modell und JSON-Parsing.</td></tr>
+            <tr><td><code>internal/report</code></td><td>Normalisierung in Findings, Summary, Fingerprints und Merge mehrerer Reports.</td></tr>
+            <tr><td><code>internal/html</code></td><td>Self-contained HTML Rendering mit CSS und kleiner Filter-JS-Schicht.</td></tr>
+            <tr><td><code>docs</code></td><td>Projekt-Dokumentation als statische HTML-Seiten.</td></tr>
+            <tr><td><code>examples</code></td><td>Kleine SARIF-Beispiele fuer Entwicklung und Demos.</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Datenfluss</h2>
+        <ol>
+          <li>Die CLI oeffnet eine oder mehrere SARIF-Dateien.</li>
+          <li><code>internal/sarif.Parse</code> validiert Version 2.1.0 und dekodiert JSON.</li>
+          <li><code>internal/report.FromSARIF</code> extrahiert Findings, Regel-Metadaten, Locations und Snippets.</li>
+          <li><code>internal/report.Merge</code> sortiert Findings und baut eine neue Summary.</li>
+          <li><code>internal/html.Render</code> erzeugt eine einzelne HTML-Datei.</li>
+        </ol>
+
+        <div class="note">
+          <strong>Warum diese Trennung?</strong>
+          <p>Wir wollen nicht, dass spaetere Render- oder Exportentscheidungen direkt am SARIF-JSON haengen. Das interne Report-Modell ist die Stelle, an der wir Duplikate, Severity-Logik, Fingerprints und spaetere Baseline-Zustaende kontrollieren koennen.</p>
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

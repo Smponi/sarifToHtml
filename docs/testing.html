@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tests - sarif-html</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="docs-page">
+    <header class="hero-panel">
+      <div class="eyebrow">Testing</div>
+      <h1 class="hero-title">sarif-html Docs</h1>
+      <p class="hero-copy">Die Teststrategie konzentriert sich zuerst auf die Stellen, an denen echte SARIF-Reports schnell unangenehm werden: Parsing, Rule-Aufloesung, Pfad-Normalisierung, Sortierung, Fingerprints und HTML-Link-Bildung.</p>
+      <div class="tag-row">
+        <span class="tag">Fast unit tests</span>
+        <span class="tag is-accent">HTML rendering checks</span>
+        <span class="tag">Real fixtures next</span>
+      </div>
+    </header>
+
+    <div class="content-panel">
+      <aside class="sidebar">
+        <div class="sidebar-title">Pages</div>
+        <nav class="sidebar-nav">
+          <a href="index.html">Overview</a>
+          <a href="architecture.html">Architecture</a>
+          <a href="cli.html">CLI</a>
+          <a href="sarif-mapping.html">SARIF Mapping</a>
+          <a href="testing.html" aria-current="page">Testing</a>
+          <a href="open-source.html">Open Source</a>
+        </nav>
+      </aside>
+
+      <main class="content-body">
+        <div class="section-kicker">Quality</div>
+        <h2 class="content-title">What the current test suite protects</h2>
+        <p class="content-copy">Die vorhandenen Tests decken den Kernpfad vom SARIF-JSON bis zum HTML-Output ab. Das ist noch keine grosse Fixture-Sammlung, aber bereits eine brauchbare Sicherung gegen die wahrscheinlichsten Regressionen.</p>
+
+        <h2>Ausfuehren</h2>
+        <pre><code>go test ./...</code></pre>
+
+        <div class="info-grid">
+          <div class="info-card">
+            <h3>SARIF parser</h3>
+            <p>Akzeptiert SARIF 2.1.0 und lehnt falsche Versionen oder leere Runs ab.</p>
+          </div>
+          <div class="info-card">
+            <h3>Report model</h3>
+            <p>Normalisiert Findings, loest relative <code>uriBaseId</code>-Pfade auf, sortiert nach Severity und Location und merged mehrere Reports reproduzierbar.</p>
+          </div>
+          <div class="info-card">
+            <h3>HTML renderer</h3>
+            <p>Prueft zentrale Inhalte im Output sowie GitHub- und GitLab-Source-Links.</p>
+          </div>
+        </div>
+
+        <h2>Naechste sinnvolle Tests</h2>
+        <p>Die erweiterbare Matrix fuer echte Scanner-Reports liegt in <a href="tested-tools.md">docs/tested-tools.md</a>. Dort stehen Kandidaten, Befehle, Status und spaeter die konkreten Fixture-Pfade.</p>
+        <ul>
+          <li>Fixtures mit echten Reports von Detekt, Semgrep, CodeQL und Trivy.</li>
+          <li>Snapshot-Test fuer die HTML-Grundstruktur.</li>
+          <li>CLI-Tests fuer stdout, Datei-Ausgabe und Exit-Code 2 bei <code>--fail-on</code>.</li>
+          <li>Mehr Windows-Pfad- und Monorepo-Fixtures.</li>
+        </ul>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

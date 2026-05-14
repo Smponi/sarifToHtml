@@ -1,0 +1,127 @@
+# SARIF Fixture Sources and Tested Tools
+
+This page is the living compatibility matrix for real-world SARIF inputs. Keep it small, factual, and easy to extend when a new scanner report is added.
+
+## Fixture Workflow
+
+1. Generate the SARIF with the scanner's native CLI output when possible. Prefer the Docker workflow below so scanner CLIs do not have to be installed locally.
+2. Record the scanner version, command, target repository or fixture, and generation date.
+3. Prefer a small committed report that still exercises real SARIF structure: rules, messages, locations, snippets, fingerprints, related locations, or code flows.
+4. Keep large, generated, or private reports out of the repository. Store the command here and commit a reduced public fixture instead.
+5. Verify the report with `sarif-html`:
+
+```sh
+go run ./cmd/sarif-html reports/tool.sarif --out report.html
+```
+
+For curated fixtures, prefer paths like `examples/<tool>.sarif` while the project is small. If the fixture set grows, move generated reports to a dedicated `testdata/sarif/<tool>/` tree and update tests to read from there.
+
+## Throwaway Docker Workflow
+
+Use the bundled scanner image when you want real reports without installing scanner CLIs on the host. The wrapper builds `tools/sarif-fixtures/Dockerfile`, mounts the repository at `/work`, writes SARIF files to `reports/`, and runs containers with `--rm`.
+
+```sh
+scripts/generate-sarif-fixtures.sh all
+```
+
+Run a single scanner:
+
+```sh
+scripts/generate-sarif-fixtures.sh gosec
+scripts/generate-sarif-fixtures.sh golangci-lint
+scripts/generate-sarif-fixtures.sh trivy
+scripts/generate-sarif-fixtures.sh detekt
+```
+
+The scanner containers run as your host UID/GID rather than root, so generated reports are owned by your user. Runtime caches live under ignored `reports/.cache/`, which keeps Go, golangci-lint, Trivy, and Grype from writing into root-owned cache paths inside the image. Commit only a curated, reduced fixture after reviewing the output for size, secrets, absolute paths, and private repository details.
+
+To remove the image after generating reports:
+
+```sh
+docker image rm sarif-fixture-tools:latest
+```
+
+Or remove it automatically after the run:
+
+```sh
+CLEAN_IMAGE=1 scripts/generate-sarif-fixtures.sh all
+```
+
+The Dockerfile currently includes `golangci-lint`, `gosec`, `govulncheck`, `Trivy`, `Grype`, `OSV-Scanner`, `Gitleaks`, `Semgrep`, and `Detekt`. Heavier ecosystem tools such as CodeQL, ESLint formatters, Checkov, KICS, and Hadolint can be added as separate images or later build targets when we need those exact fixtures.
+
+The wrapper pins the versions that have historically been brittle in release installers. Override them only when needed:
+
+```sh
+GOLANGCI_LINT_VERSION=v2.12.1 DETEKT_VERSION=1.23.8 GITLEAKS_VERSION=v8.30.1 scripts/generate-sarif-fixtures.sh golangci-lint
+```
+
+## Scanner Targets
+
+The repository includes intentionally vulnerable or low-quality input projects for generating reports:
+
+| Target | Path | Primary scanners |
+| --- | --- | --- |
+| Go module with insecure patterns and vulnerable dependency | `fixtures/scan-targets/go-bad` | `golangci-lint`, `gosec`, `govulncheck`, `Grype`, `OSV-Scanner` |
+| Insecure Docker and Compose files | `fixtures/scan-targets/docker-bad` | `Trivy`, `Gitleaks` |
+| Python and JavaScript snippets with command execution, `eval`, deserialization, and fake secrets | `fixtures/scan-targets/semgrep-bad` | `Semgrep`, `Gitleaks` |
+| Kotlin code with Detekt rule violations | `fixtures/scan-targets/kotlin-bad` | `Detekt` |
+
+After generating reports, render them with local source snippets:
+
+```sh
+go run ./cmd/sarif-html reports/*.sarif \
+  --source-root . \
+  --source-root fixtures/scan-targets/go-bad \
+  --source-root fixtures/scan-targets/semgrep-bad \
+  --source-root fixtures/scan-targets/kotlin-bad \
+  --out report.html
+```
+
+## Current Coverage
+
+| Status | Tool | Fixture | Notes |
+| --- | --- | --- | --- |
+| Synthetic | detekt | `examples/detekt-like.sarif` | Hand-written minimal SARIF shaped like Detekt output. Useful for local demos, but not a real scanner report. |
+
+## Go-First SARIF Producers
+
+These are the first tools to use for real fixtures because they are easy to run from CLI and produce SARIF directly.
+
+| Status | Tool | Command | What it exercises |
+| --- | --- | --- | --- |
+| Candidate | [golangci-lint](https://golangci-lint.run/docs/configuration/file/) | `scripts/generate-sarif-fixtures.sh golangci-lint` | Multi-linter Go findings, rule metadata, severity mapping, path handling. |
+| Candidate | [gosec](https://github.com/securego/gosec) | `scripts/generate-sarif-fixtures.sh gosec` | Go security findings, CWE/help links, suppression metadata when enabled. |
+| Candidate | [govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) | `scripts/generate-sarif-fixtures.sh govulncheck` | Dependency and reachable vulnerability findings for Go modules. |
+| Candidate | [Trivy](https://trivy.dev/docs/latest/configuration/reporting/) | `scripts/generate-sarif-fixtures.sh trivy` | Vulnerabilities, secrets, IaC misconfigurations, and license findings in one report. |
+| Candidate | [Grype](https://oss.anchore.com/docs/reference/grype/cli/) | `scripts/generate-sarif-fixtures.sh grype` | Filesystem or image dependency vulnerabilities. Good contrast to Trivy. |
+| Candidate | [OSV-Scanner](https://google.github.io/osv-scanner/output/) | `scripts/generate-sarif-fixtures.sh osv-scanner` | OSV vulnerability findings, package-level locations, alias grouping. |
+| Candidate | [Gitleaks](https://github.com/gitleaks/gitleaks) | `scripts/generate-sarif-fixtures.sh gitleaks` | Secret scanning results, redaction behavior, filesystem paths. |
+
+Staticcheck is still worth testing through `golangci-lint`, but its own documented CLI formatters are text-style and JSON rather than native SARIF.
+
+## Cross-Language and Ecosystem Tools
+
+These broaden the fixture set beyond Go code and help catch assumptions in the normalizer.
+
+| Status | Tool | Command | What it exercises |
+| --- | --- | --- | --- |
+| Candidate | [Semgrep CE](https://semgrep.dev/docs/deployment/oss-deployment) | `scripts/generate-sarif-fixtures.sh semgrep` | Multi-language SAST, rule help, metadata-rich messages. |
+| Candidate | [CodeQL CLI](https://docs.github.com/en/code-security/concepts/code-scanning/codeql/about-the-codeql-cli) | `codeql database analyze codeql-db <suite>.qls --format=sarif-latest --output=reports/codeql.sarif` | Path problems, code flows, related locations, rich query metadata. |
+| Candidate | [Detekt](https://detekt.dev/docs/introduction/reporting/) | `scripts/generate-sarif-fixtures.sh detekt` | Kotlin static analysis and multi-module SARIF merge behavior. |
+| Candidate | [ESLint SARIF formatter](https://www.npmjs.com/package/%40microsoft/eslint-formatter-sarif) | `npx eslint -f @microsoft/eslint-formatter-sarif -o reports/eslint.sarif .` | JavaScript/TypeScript lint findings and formatter-generated SARIF. |
+| Candidate | [Checkov](https://www.checkov.io/8.Outputs/SARIF.html) | `checkov -d . -o sarif > reports/checkov.sarif` | Terraform, Kubernetes, Dockerfile, OpenAPI, and cloud policy findings. |
+| Candidate | [KICS](https://docs.kics.io/latest/results/) | `kics scan -p . -o reports --report-formats sarif --output-name kics` | IaC findings, category/rule relationships, generated report filenames. |
+| Candidate | [Hadolint](https://github.com/hadolint/hadolint) | `hadolint -f sarif Dockerfile > reports/hadolint.sarif` | Dockerfile linting with compact rule IDs and line-focused diagnostics. |
+
+## Suggested First Fixture Batch
+
+Start with a compact batch that exercises different SARIF shapes without exploding the repository:
+
+1. `gosec` against a tiny intentionally insecure Go module.
+2. `golangci-lint` against this repository or a small Go fixture.
+3. `govulncheck` against a fixture with a known vulnerable dependency.
+4. `Semgrep` against a small mixed JS/Python fixture.
+5. `Trivy fs` against a repo with `Dockerfile`, lockfiles, and IaC.
+6. `CodeQL` against one small public repository when we want to validate code flows.
+
+When one of these is committed, change its status from `Candidate` to `Tested`, add the fixture path, and include the exact tool version.

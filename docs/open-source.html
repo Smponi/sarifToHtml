@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Open Source - sarif-html</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="docs-page">
+    <header class="hero-panel">
+      <div class="eyebrow">Open Source</div>
+      <h1 class="hero-title">sarif-html Docs</h1>
+      <p class="hero-copy">Bevor sarif-html veroeffentlicht wird, brauchen wir neben Code und Tests auch klare Projektinformationen: README, Lizenzentscheidung, Contribution-Regeln und einen nachvollziehbaren Release-Pfad.</p>
+      <div class="tag-row">
+        <span class="tag">README</span>
+        <span class="tag is-accent">License decision pending</span>
+        <span class="tag">Release prep</span>
+      </div>
+    </header>
+
+    <div class="content-panel">
+      <aside class="sidebar">
+        <div class="sidebar-title">Pages</div>
+        <nav class="sidebar-nav">
+          <a href="index.html">Overview</a>
+          <a href="architecture.html">Architecture</a>
+          <a href="cli.html">CLI</a>
+          <a href="sarif-mapping.html">SARIF Mapping</a>
+          <a href="testing.html">Testing</a>
+          <a href="open-source.html" aria-current="page">Open Source</a>
+        </nav>
+      </aside>
+
+      <main class="content-body">
+        <div class="section-kicker">Publishing</div>
+        <h2 class="content-title">What still needs to happen before publishing</h2>
+        <p class="content-copy">Der Prototyp ist lauffaehig, aber ein gutes Open-Source-Projekt braucht mehr als einen funktionierenden Binary-Pfad. Diese Liste haelt die verbleibenden Entscheidungen sichtbar.</p>
+
+        <div class="info-grid">
+          <div class="info-card">
+            <h3>License</h3>
+            <p>Wir muessen eine Lizenz waehlen und als <code>LICENSE</code> einchecken. Sinnvolle Kandidaten waeren MIT oder Apache-2.0.</p>
+          </div>
+          <div class="info-card">
+            <h3>Module path</h3>
+            <p>Vor dem ersten Release sollte <code>go.mod</code> auf den finalen Repository-Pfad zeigen, zum Beispiel <code>github.com/&lt;owner&gt;/sarif-html</code>.</p>
+          </div>
+          <div class="info-card">
+            <h3>Releases</h3>
+            <p>Wir brauchen einen Plan fuer Tags, Changelog, Cross-Platform-Binaries und Checksums.</p>
+          </div>
+        </div>
+
+        <h2>Naechste Schritte</h2>
+        <ul>
+          <li><code>LICENSE</code> nach Lizenzentscheidung.</li>
+          <li>Release Workflow fuer Cross-Platform-Binaries.</li>
+          <li><code>CHANGELOG.md</code> ab dem ersten Release aktiv pflegen.</li>
+          <li>Echte SARIF-Fixtures fuer Kompatibilitaetstests.</li>
+        </ul>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

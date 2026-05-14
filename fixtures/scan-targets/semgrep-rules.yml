@@ -1,0 +1,35 @@
+rules:
+  - id: sarif-fixture.python.subprocess-shell-true
+    message: Avoid passing user input to subprocess with shell=True.
+    severity: ERROR
+    languages:
+      - python
+    pattern: subprocess.check_output($COMMAND, shell=True)
+
+  - id: sarif-fixture.python.pickle-loads
+    message: Avoid deserializing untrusted data with pickle.loads.
+    severity: ERROR
+    languages:
+      - python
+    pattern: pickle.loads($DATA)
+
+  - id: sarif-fixture.python.eval
+    message: Avoid eval on request-controlled input.
+    severity: WARNING
+    languages:
+      - python
+    pattern: eval($EXPRESSION)
+
+  - id: sarif-fixture.javascript.child-process-exec
+    message: Avoid child_process.exec with request-controlled input.
+    severity: ERROR
+    languages:
+      - javascript
+    pattern: childProcess.exec($COMMAND, ...)
+
+  - id: sarif-fixture.javascript.eval
+    message: Avoid eval on request-controlled input.
+    severity: WARNING
+    languages:
+      - javascript
+    pattern: eval($EXPRESSION)

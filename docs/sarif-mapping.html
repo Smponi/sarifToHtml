@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SARIF Mapping - sarif-html</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="docs-page">
+    <header class="hero-panel">
+      <div class="eyebrow">SARIF Mapping</div>
+      <h1 class="hero-title">sarif-html Docs</h1>
+      <p class="hero-copy">sarif-html liest nicht das komplette SARIF-Schema aus. Der Prototyp nutzt bewusst nur die Teile, die fuer einen stabilen HTML-Report und spaetere Erweiterbarkeit wirklich relevant sind.</p>
+      <div class="tag-row">
+        <span class="tag">SARIF 2.1.0</span>
+        <span class="tag is-accent">Rule resolution</span>
+        <span class="tag">Stable fingerprints</span>
+      </div>
+    </header>
+
+    <div class="content-panel">
+      <aside class="sidebar">
+        <div class="sidebar-title">Pages</div>
+        <nav class="sidebar-nav">
+          <a href="index.html">Overview</a>
+          <a href="architecture.html">Architecture</a>
+          <a href="cli.html">CLI</a>
+          <a href="sarif-mapping.html" aria-current="page">SARIF Mapping</a>
+          <a href="testing.html">Testing</a>
+          <a href="open-source.html">Open Source</a>
+        </nav>
+      </aside>
+
+      <main class="content-body">
+        <div class="section-kicker">Model</div>
+        <h2 class="content-title">How a SARIF result becomes a finding</h2>
+        <p class="content-copy">Das interne Modell ist absichtlich kleiner als SARIF selbst. Es konzentriert sich auf Tool-, Rule- und Location-Daten sowie auf die Informationen, die ein Mensch im Report zuerst braucht.</p>
+
+        <h2>Finding Mapping</h2>
+        <table>
+          <thead>
+            <tr><th>Report-Feld</th><th>SARIF-Quelle</th><th>Fallback</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>Tool</code></td><td><code>run.tool.driver.name</code></td><td><code>unknown-tool</code></td></tr>
+            <tr><td><code>ToolVersion</code></td><td><code>semanticVersion</code>, <code>version</code></td><td>leer</td></tr>
+            <tr><td><code>RuleID</code></td><td><code>result.ruleId</code>, Rule ueber <code>ruleIndex</code></td><td><code>unknown-rule</code></td></tr>
+            <tr><td><code>RuleName</code></td><td><code>rule.name</code></td><td><code>RuleID</code></td></tr>
+            <tr><td><code>Message</code></td><td><code>result.message.text</code>, <code>markdown</code></td><td>Rule Description</td></tr>
+            <tr><td><code>Path</code></td><td><code>locations[0].physicalLocation.artifactLocation.uri</code></td><td>leer</td></tr>
+            <tr><td><code>Line/Column</code></td><td><code>locations[0].physicalLocation.region</code></td><td><code>-</code></td></tr>
+            <tr><td><code>Snippet</code></td><td><code>contextRegion.snippet.text</code>, <code>region.snippet.text</code></td><td>leer</td></tr>
+            <tr><td><code>Fingerprint</code></td><td><code>partialFingerprints</code>, <code>fingerprints</code></td><td>SHA-1 aus Tool, Rule, Pfad, Zeile und Message</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Severity</h2>
+        <table>
+          <thead>
+            <tr><th>SARIF level</th><th>Report level</th><th>Sortierung</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>error</code></td><td><code>error</code></td><td>hoechste Prioritaet</td></tr>
+            <tr><td><code>warning</code></td><td><code>warning</code></td><td>mittel</td></tr>
+            <tr><td><code>note</code></td><td><code>note</code></td><td>niedrig</td></tr>
+            <tr><td><code>none</code></td><td><code>none</code></td><td>informativ</td></tr>
+            <tr><td>leer oder unbekannt</td><td><code>warning</code></td><td>konservativer Default</td></tr>
+          </tbody>
+        </table>
+
+        <div class="note">
+          <strong>Details im Report</strong>
+          <p><code>relatedLocations</code> und <code>codeFlows.threadFlows.locations</code> werden als kompakte Listen angezeigt. Das ist wichtig fuer Tools, die Datenfluesse oder mehrere betroffene Code-Stellen melden.</p>
+        </div>
+
+        <div class="note">
+          <strong>Source Links</strong>
+          <p>Dateilinks koennen automatisch aus GitHub-Actions- oder GitLab-CI-Umgebungsvariablen entstehen. Fuer Pull-Request- und Merge-Request-Sonderfaelle kann <code>--source-url-template</code> genutzt werden, damit der Link exakt auf den passenden Ref zeigt.</p>
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>
