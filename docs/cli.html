@@ -76,6 +76,28 @@
 
         <p>Without <code>--template</code>, sarif-html uses the embedded default template. Custom templates are Go <code>html/template</code> files or directories containing <code>.tmpl</code>, <code>.gotmpl</code>, or <code>.html</code> files. They receive the versioned <code>sarif-html.template.v1</code> data contract documented in <a href="templates.html">Templates v1</a>.</p>
 
+        <h2>Template Validation</h2>
+        <pre><code>sarif-html reports/*.sarif \
+  --template .github/sarif-html/report.tmpl \
+  --template-data-out template-data.json \
+  --dry-run</code></pre>
+
+        <p><code>--dry-run</code> loads SARIF, hydrates snippets, and executes the selected template without writing the HTML report or applying <code>--fail-on</code>. <code>--template-data-out</code> writes the exact versioned JSON data object passed to the template.</p>
+
+        <h2>Baselines</h2>
+        <pre><code>sarif-html reports/*.sarif \
+  --baseline-out sarif-baseline.json \
+  --dry-run</code></pre>
+
+        <p><code>--baseline-out</code> writes a versioned <code>sarif-html.baseline.v1</code> JSON file from the current findings. If the file already exists, sarif-html asks before overwriting and defaults to <code>N</code>; use <code>--baseline-overwrite</code> only for intentional replacement.</p>
+
+        <pre><code>sarif-html reports/*.sarif \
+  --baseline sarif-baseline.json \
+  --out report.html \
+  --fail-on error</code></pre>
+
+        <p>Matching baseline findings are marked <code>unchanged</code>, hidden by default in the built-in report, and ignored by <code>--fail-on</code>. Non-matching findings are marked <code>new</code> and still participate in CI gates.</p>
+
         <h2>CI Gates</h2>
         <pre><code>sarif-html input.sarif --out report.html --fail-on error</code></pre>
 
@@ -87,11 +109,16 @@
             <tr><td><code>--out</code></td><td>Output file. Use <code>-</code> to write HTML to stdout.</td></tr>
             <tr><td><code>--title</code></td><td>Report title.</td></tr>
             <tr><td><code>--template</code></td><td>Custom Go <code>html/template</code> file or template directory. Uses the embedded default template when omitted.</td></tr>
+            <tr><td><code>--template-data-out</code></td><td>Write the versioned template data JSON to a file, or <code>-</code> for stdout.</td></tr>
+            <tr><td><code>--baseline</code></td><td>Read a <code>sarif-html.baseline.v1</code> JSON baseline and mark matching findings as <code>unchanged</code>.</td></tr>
+            <tr><td><code>--baseline-out</code></td><td>Write a <code>sarif-html.baseline.v1</code> JSON baseline from current findings, or <code>-</code> for stdout.</td></tr>
+            <tr><td><code>--baseline-overwrite</code></td><td>Overwrite an existing baseline output file without prompting.</td></tr>
             <tr><td><code>--repo-url</code></td><td>Repository base URL for clickable source links.</td></tr>
             <tr><td><code>--revision</code></td><td>Branch, tag, or commit used for clickable source links.</td></tr>
             <tr><td><code>--source-url-template</code></td><td>Explicit source URL template. Overrides automatic link generation.</td></tr>
             <tr><td><code>--source-root</code></td><td>Local source directory used to hydrate missing snippets. May be repeated.</td></tr>
-            <tr><td><code>--fail-on</code></td><td>Exit with code 2 when a finding reaches the threshold: <code>error</code>, <code>warning</code>, <code>note</code>, or <code>none</code>.</td></tr>
+            <tr><td><code>--fail-on</code></td><td>Exit with code 2 when a non-baseline finding reaches the threshold: <code>error</code>, <code>warning</code>, <code>note</code>, or <code>none</code>.</td></tr>
+            <tr><td><code>--dry-run</code></td><td>Execute the selected template without writing the HTML report or applying <code>--fail-on</code>.</td></tr>
             <tr><td><code>--version</code></td><td>Print the CLI version.</td></tr>
           </tbody>
         </table>

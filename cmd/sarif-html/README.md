@@ -8,9 +8,13 @@ Responsibilities:
 - Parse command-line flags and positional SARIF inputs.
 - Infer source link templates from explicit flags or common CI environments.
 - Load SARIF files and pass them into the report normalization pipeline.
+- Load and write versioned baseline JSON through `internal/report`.
 - Render HTML output to a file or standard output.
 - Pass an optional custom template path into the HTML renderer.
-- Return CI-friendly exit code `2` when `--fail-on` is matched.
+- Validate templates with `--dry-run` and write versioned template data JSON
+  with `--template-data-out`.
+- Return CI-friendly exit code `2` when `--fail-on` is matched by a
+  non-baseline finding.
 
 Keep business logic out of this package whenever possible. Parser behavior
 belongs in `internal/sarif`, normalized finding behavior belongs in

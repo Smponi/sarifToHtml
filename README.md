@@ -12,6 +12,7 @@ This repository is an early prototype. The core flow works:
 - Normalize results into an internal finding model.
 - Merge multiple SARIF files into one report.
 - Render a static HTML report with filters, summaries, snippets, related locations, code flows, and source links.
+- Generate and apply JSON baselines so known findings can be hidden and ignored by CI gates.
 - Run CI-style gates with `--fail-on`.
 
 The public API, output design, and module path may still change before the first tagged release.
@@ -42,7 +43,20 @@ Use a severity threshold in CI:
 go run ./cmd/sarif-html reports/detekt.sarif --out report.html --fail-on error
 ```
 
-When a finding at or above the threshold exists, the report is still written and the command exits with code `2`.
+When a non-baseline finding at or above the threshold exists, the report is still written and the command exits with code `2`.
+
+Create a baseline from the current findings, then use it in CI so only new matching-threshold findings fail the build:
+
+```sh
+go run ./cmd/sarif-html reports/*.sarif \
+  --baseline-out sarif-baseline.json \
+  --dry-run
+
+go run ./cmd/sarif-html reports/*.sarif \
+  --baseline sarif-baseline.json \
+  --out report.html \
+  --fail-on error
+```
 
 ## CLI
 
@@ -55,11 +69,16 @@ sarif-html [flags] <input.sarif> [more-inputs.sarif...]
 | `--out` | Output HTML file. Use `-` to write HTML to stdout. Default: `report.html`. |
 | `--title` | Report title. Default: `SARIF HTML Report`. |
 | `--template` | Custom Go `html/template` file or directory. When omitted, the built-in default template is used. |
+| `--template-data-out` | Write the versioned template data JSON to a file, or `-` for stdout. |
+| `--baseline` | Read a `sarif-html.baseline.v1` JSON baseline and mark matching findings as `unchanged`. |
+| `--baseline-out` | Write a `sarif-html.baseline.v1` JSON baseline from the current findings, or `-` for stdout. |
+| `--baseline-overwrite` | Overwrite an existing `--baseline-out` file without prompting. Without this flag, overwriting asks for confirmation and defaults to `N`. |
 | `--repo-url` | Repository URL used to build clickable source links. |
 | `--revision` | Branch, tag, or commit used for source links. |
 | `--source-url-template` | Full source link template. Overrides `--repo-url` and `--revision` link generation. |
 | `--source-root` | Local source directory used to load missing snippets from SARIF locations. May be repeated. Default: `.`. |
-| `--fail-on` | Exit with code `2` when a finding at or above this level exists: `error`, `warning`, `note`, or `none`. |
+| `--fail-on` | Exit with code `2` when a non-baseline finding at or above this level exists: `error`, `warning`, `note`, or `none`. |
+| `--dry-run` | Load SARIF and execute the selected template without writing the HTML report or applying `--fail-on`. |
 | `--version` | Print the CLI version. |
 
 Flags may appear before or after input files:
@@ -93,6 +112,48 @@ go run ./cmd/sarif-html reports/*.sarif \
   --source-root fixtures/scan-targets/semgrep-bad \
   --out report.html
 ```
+
+## Baselines and CI Gates
+
+Baselines are versioned JSON files with schema `sarif-html.baseline.v1`. A
+baseline stores the stable identity of every currently accepted finding. The
+identity is derived from normalized tool, rule, path, and fingerprint data; if a
+scanner omits fingerprints, `sarif-html` creates a deterministic fallback before
+the baseline is written.
+
+Generate the first baseline from all reports:
+
+```sh
+sarif-html reports/*.sarif \
+  --baseline-out sarif-baseline.json \
+  --dry-run
+```
+
+If `sarif-baseline.json` already exists, `sarif-html` prompts before
+overwriting it:
+
+```text
+Baseline sarif-baseline.json already exists. Overwrite? [y/N]:
+```
+
+The default answer is `N`. Use `--baseline-overwrite` only when the replacement
+is intentional, for example in a controlled maintenance job.
+
+Use the baseline during normal report generation:
+
+```sh
+sarif-html reports/*.sarif \
+  --baseline sarif-baseline.json \
+  --out report.html \
+  --fail-on error
+```
+
+Matching findings are marked `unchanged`, hidden by default in the built-in HTML
+report, and ignored by `--fail-on`. New findings are marked `new`, remain
+visible, and still participate in the CI gate. The generated baseline is
+round-trippable: writing `--baseline-out` and reading that JSON back with
+`--baseline` reproduces the same `unchanged` state for the same normalized
+findings.
 
 ## Source Links
 
@@ -176,6 +237,52 @@ go run ./cmd/sarif-html examples/detekt-like.sarif \
 See [`examples/templates/pixel-console/report.tmpl`](examples/templates/pixel-console/report.tmpl)
 for a self-contained pixel-art report with embedded CSS, JavaScript filtering, a
 scrolling ticker, and scanline animations.
+
+### Validate and Inspect Templates
+
+Use `--dry-run` to validate that SARIF loading, snippet hydration, template
+parsing, and template execution all work without writing the HTML report:
+
+```sh
+sarif-html examples/detekt-like.sarif \
+  --template examples/templates/pixel-console/report.tmpl \
+  --dry-run
+```
+
+`--dry-run` does not apply `--fail-on`, because it is meant for template
+validation rather than CI severity gating.
+
+Use `--template-data-out` to inspect the exact versioned data object that a
+template receives:
+
+```sh
+sarif-html examples/detekt-like.sarif \
+  --template-data-out template-data.json \
+  --dry-run
+```
+
+The JSON uses lower-camel-case field names such as `schemaVersion`,
+`generatedAt`, `report.findings`, and `sourceLink`, while Go templates use the
+exported field names such as `.SchemaVersion`, `.GeneratedAt`,
+`.Report.Findings`, and `.SourceLink`.
+
+The difference is intentional:
+
+| JSON contract field | Go template field |
+| --- | --- |
+| `schemaVersion` | `.SchemaVersion` |
+| `generatedAt` | `.GeneratedAt` |
+| `report.summary.total` | `.Report.Summary.Total` |
+| `report.summary.byBaselineState` | `.Report.Summary.ByBaselineState` |
+| `report.findings` | `.Report.Findings` |
+| `report.findings[].ruleID` | `.RuleID` inside `range .Report.Findings` |
+| `report.findings[].isBaseline` | `.IsBaseline` inside `range .Report.Findings` |
+| `report.findings[].sourceLink` | `.SourceLink` inside `range .Report.Findings` |
+| `baseline.hideUnchangedByDefault` | `.Baseline.HideUnchangedByDefault` |
+
+When authoring templates, always use the Go template field names. Use the JSON
+output to inspect values and structure, not as copy-paste syntax for template
+expressions.
 
 ### Template File Shape
 
@@ -330,6 +437,8 @@ modular layout with partials:
 - Start with `<!doctype html>` and include a viewport meta tag.
 - Use `.SchemaVersion` when logging or diagnosing template compatibility.
 - Iterate over `.Report.Findings` for finding-level output.
+- Use `.IsBaseline` or `.Baseline.HideUnchangedByDefault` when a custom
+  template should mirror the default report's baseline hiding behavior.
 - Prefer `.SourceLink` or `sourceLink .` for clickable source locations.
 - Use `line .StartLine` so missing line numbers render cleanly.
 - Put values used by JavaScript into `data-*` attributes and let
@@ -339,6 +448,10 @@ modular layout with partials:
   safe HTML.
 - Treat the template file itself as trusted input; do not run templates from
   unknown sources.
+- Add `--dry-run` to CI when you want to validate a custom template without
+  producing the HTML artifact.
+- Add `--template-data-out` when debugging a template or reviewing a future
+  template contract change.
 
 Custom templates receive the versioned `sarif-html.template.v1` data contract:
 
@@ -353,13 +466,14 @@ Custom templates receive the versioned `sarif-html.template.v1` data contract:
 | `.ToolGroups` | Findings grouped by tool name. |
 | `.Rules` | Ordered rule counts. |
 | `.Files` | Ordered file counts. |
+| `.Baseline` | Baseline UI options and counts, including `Enabled`, `HideUnchangedByDefault`, `New`, `Unchanged`, `ByState`, and `States`. |
 
 Each `.Report.Findings` entry exposes the normalized finding fields used by the
 default report, including `ID`, `Source`, `Tool`, `ToolVersion`, `RuleID`,
 `RuleName`, `RuleDescription`, `RuleHelpURI`, `Level`, `Message`, `Path`,
 `URI`, `StartLine`, `StartColumn`, `EndLine`, `EndColumn`, `Snippet`,
-`Fingerprint`, `BaselineState`, `RelatedLocations`, `CodeFlows`, and
-`SourceLink`.
+`Fingerprint`, `BaselineState`, `IsBaseline`, `RelatedLocations`, `CodeFlows`,
+and `SourceLink`.
 
 Available template helpers:
 
@@ -465,7 +579,7 @@ The generated report UI and the documentation UI are intentionally separate. The
 
 - Add real-world fixtures from the candidate tools in `docs/tested-tools.md`.
 - Support SARIF URI base IDs more completely, especially monorepo and Windows path edge cases.
-- Add baseline comparison: new, unchanged, and resolved findings.
+- Add resolved-finding reporting for baselines.
 - Improve large-report performance and navigation.
 - Add optional grouping modes by file, rule, severity, and tool.
 - Add release builds for macOS, Linux, and Windows.

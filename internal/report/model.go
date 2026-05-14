@@ -14,11 +14,13 @@ type Report struct {
 // Summary stores aggregate counts used by the report UI and CI decisions.
 type Summary struct {
 	Total int
-	// BySeverity, ByTool, ByRule, and ByFile back the report facets.
-	BySeverity map[string]int
-	ByTool     map[string]int
-	ByRule     map[string]int
-	ByFile     map[string]int
+	// BySeverity, ByTool, ByRule, ByFile, and ByBaselineState back the report
+	// facets and template aggregates.
+	BySeverity      map[string]int
+	ByTool          map[string]int
+	ByRule          map[string]int
+	ByFile          map[string]int
+	ByBaselineState map[string]int
 }
 
 // Finding is one normalized scanner result with source, rule, location, and

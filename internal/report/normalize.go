@@ -15,6 +15,19 @@ const (
 	levelWarning = "warning"
 	levelNote    = "note"
 	levelNone    = "none"
+
+	// BaselineStateNew marks a finding that is not present in the accepted
+	// baseline.
+	BaselineStateNew = "new"
+	// BaselineStateUnchanged marks a finding that matches the accepted
+	// baseline and is therefore hidden by default in the HTML report.
+	BaselineStateUnchanged = "unchanged"
+	// BaselineStateUpdated preserves SARIF's state for findings that still
+	// deserve review because they changed from the baseline.
+	BaselineStateUpdated = "updated"
+	// BaselineStateAbsent preserves SARIF's state for resolved findings when a
+	// producer includes them.
+	BaselineStateAbsent = "absent"
 )
 
 // FromSARIF converts a parsed SARIF log into a deterministic report. It keeps
@@ -83,7 +96,7 @@ func FromSARIF(log *sarif.Log, sourceName string) Report {
 					firstFingerprint(sarifResult.PartialFingerprints, "primaryLocationLineHash", "primaryLocationStartColumnFingerprint"),
 					firstFingerprint(sarifResult.Fingerprints, "stable", "guid"),
 				),
-				BaselineState: sarifResult.BaselineState,
+				BaselineState: normalizeBaselineState(sarifResult.BaselineState),
 			}
 			if finding.Message == "" {
 				finding.Message = finding.RuleDescription
@@ -134,10 +147,11 @@ func Merge(title string, reports ...Report) Report {
 
 func newSummary() Summary {
 	return Summary{
-		BySeverity: map[string]int{},
-		ByTool:     map[string]int{},
-		ByRule:     map[string]int{},
-		ByFile:     map[string]int{},
+		BySeverity:      map[string]int{},
+		ByTool:          map[string]int{},
+		ByRule:          map[string]int{},
+		ByFile:          map[string]int{},
+		ByBaselineState: map[string]int{},
 	}
 }
 
@@ -234,6 +248,19 @@ func addSummary(summary *Summary, finding Finding) {
 	if finding.Path != "" {
 		summary.ByFile[finding.Path]++
 	}
+	if finding.BaselineState != "" {
+		summary.ByBaselineState[finding.BaselineState]++
+	}
+}
+
+// RebuildSummary refreshes aggregate counts after a transformation changes
+// findings in-place, such as applying a baseline.
+func RebuildSummary(reportData *Report) {
+	summary := newSummary()
+	for _, finding := range reportData.Findings {
+		addSummary(&summary, finding)
+	}
+	reportData.Summary = summary
 }
 
 // sortFindings makes report output deterministic and review-oriented: highest
@@ -276,6 +303,23 @@ func normalizeLevel(level string) string {
 		return levelNone
 	default:
 		return levelWarning
+	}
+}
+
+// normalizeBaselineState keeps SARIF baseline state comparisons predictable
+// while preserving empty states for reports that did not apply a baseline.
+func normalizeBaselineState(state string) string {
+	switch strings.ToLower(strings.TrimSpace(state)) {
+	case BaselineStateNew:
+		return BaselineStateNew
+	case BaselineStateUnchanged:
+		return BaselineStateUnchanged
+	case BaselineStateUpdated:
+		return BaselineStateUpdated
+	case BaselineStateAbsent:
+		return BaselineStateAbsent
+	default:
+		return strings.TrimSpace(state)
 	}
 }
 
@@ -406,4 +450,9 @@ func firstNonEmpty(values ...string) string {
 func MeetsThreshold(level, threshold string) bool {
 	threshold = normalizeLevel(threshold)
 	return severityRank(normalizeLevel(level)) >= severityRank(threshold)
+}
+
+// IsBaselineFinding reports whether a finding is part of the accepted baseline.
+func IsBaselineFinding(finding Finding) bool {
+	return normalizeBaselineState(finding.BaselineState) == BaselineStateUnchanged
 }

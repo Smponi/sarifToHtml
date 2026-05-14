@@ -45,6 +45,39 @@
 
         <p>When <code>--template</code> points to a directory, sarif-html recursively loads files ending in <code>.tmpl</code>, <code>.gotmpl</code>, or <code>.html</code> in lexical order.</p>
 
+        <h2>Validate and Inspect</h2>
+        <p>Use <code>--dry-run</code> while developing a template. It loads SARIF, hydrates snippets, parses the template, and executes it against <code>sarif-html.template.v1</code> without writing the HTML report or applying <code>--fail-on</code>.</p>
+
+        <pre><code>sarif-html reports/*.sarif \
+  --template .github/sarif-html/report.tmpl \
+  --dry-run</code></pre>
+
+        <p>Use <code>--template-data-out</code> to write the exact JSON object that the template receives. JSON uses lower-camel-case names such as <code>schemaVersion</code> and <code>report.findings</code>; Go templates use exported field names such as <code>.SchemaVersion</code> and <code>.Report.Findings</code>.</p>
+
+        <pre><code>sarif-html reports/*.sarif \
+  --template-data-out template-data.json \
+  --dry-run</code></pre>
+
+        <h2>JSON Names vs Template Names</h2>
+        <p>The naming difference is intentional. Use JSON to inspect values and structure, but use Go template field names when writing template expressions.</p>
+
+        <table>
+          <thead>
+            <tr><th>JSON contract field</th><th>Go template field</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>schemaVersion</code></td><td><code>.SchemaVersion</code></td></tr>
+            <tr><td><code>generatedAt</code></td><td><code>.GeneratedAt</code></td></tr>
+            <tr><td><code>report.summary.total</code></td><td><code>.Report.Summary.Total</code></td></tr>
+            <tr><td><code>report.summary.byBaselineState</code></td><td><code>.Report.Summary.ByBaselineState</code></td></tr>
+            <tr><td><code>report.findings</code></td><td><code>.Report.Findings</code></td></tr>
+            <tr><td><code>report.findings[].ruleID</code></td><td><code>.RuleID</code> inside <code>range .Report.Findings</code></td></tr>
+            <tr><td><code>report.findings[].isBaseline</code></td><td><code>.IsBaseline</code> inside <code>range .Report.Findings</code></td></tr>
+            <tr><td><code>report.findings[].sourceLink</code></td><td><code>.SourceLink</code> inside <code>range .Report.Findings</code></td></tr>
+            <tr><td><code>baseline.hideUnchangedByDefault</code></td><td><code>.Baseline.HideUnchangedByDefault</code></td></tr>
+          </tbody>
+        </table>
+
         <h2>Minimal Template</h2>
         <pre><code>&lt;!doctype html&gt;
 &lt;html lang="en"&gt;
@@ -99,6 +132,7 @@
 
         <h2>TemplateData v1</h2>
         <p>The current data contract is identified by <code>sarif-html.template.v1</code>. Use <code>{{ .SchemaVersion }}</code> in diagnostics or generated metadata when a template needs to assert the expected contract.</p>
+        <p>Baseline-aware templates can use <code>.Baseline.HideUnchangedByDefault</code> for the default visibility decision and <code>.IsBaseline</code> on each finding when rendering toggles or badges.</p>
 
         <table>
           <thead>
@@ -114,6 +148,7 @@
             <tr><td><code>.ToolGroups</code></td><td>Findings grouped by tool name, densest groups first.</td></tr>
             <tr><td><code>.Rules</code></td><td>Ordered rule counts.</td></tr>
             <tr><td><code>.Files</code></td><td>Ordered file counts.</td></tr>
+            <tr><td><code>.Baseline</code></td><td>Baseline options and counts, including <code>Enabled</code>, <code>HideUnchangedByDefault</code>, <code>New</code>, <code>Unchanged</code>, <code>ByState</code>, and <code>States</code>.</td></tr>
           </tbody>
         </table>
 
@@ -124,7 +159,7 @@
             <tr><th>Field group</th><th>Fields</th></tr>
           </thead>
           <tbody>
-            <tr><td>Identity</td><td><code>ID</code>, <code>Fingerprint</code>, <code>BaselineState</code></td></tr>
+            <tr><td>Identity</td><td><code>ID</code>, <code>Fingerprint</code>, <code>BaselineState</code>, <code>IsBaseline</code></td></tr>
             <tr><td>Source</td><td><code>Source</code>, <code>Tool</code>, <code>ToolVersion</code></td></tr>
             <tr><td>Rule</td><td><code>RuleID</code>, <code>RuleName</code>, <code>RuleDescription</code>, <code>RuleHelpURI</code></td></tr>
             <tr><td>Message</td><td><code>Level</code>, <code>Message</code></td></tr>

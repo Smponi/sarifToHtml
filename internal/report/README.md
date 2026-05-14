@@ -8,7 +8,10 @@ Responsibilities:
 - Resolve rules, levels, paths, fingerprints, related locations, and code flows.
 - Merge several SARIF inputs into a single sorted report.
 - Build summary counts for severities, tools, rules, and files.
+- Create, parse, and apply `sarif-html.baseline.v1` JSON baselines.
 - Hydrate missing source snippets from trusted source roots.
 
 This package is the main compatibility layer between diverse scanner output and
 the user-facing report. Keep behavior deterministic and well covered by tests.
+Baseline matching belongs here so the CLI, HTML renderer, and future outputs all
+see the same `new` and `unchanged` states.

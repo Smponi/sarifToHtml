@@ -14,7 +14,7 @@ const pageTemplate = `<!doctype html>
       <div class="title-block">
         <span class="report-kicker">SARIF analysis</span>
         <h1>{{ .Title }}</h1>
-        <p>{{ .Report.Summary.Total }} findings across {{ len .Report.Sources }} source file(s) · generated {{ .GeneratedAt }}</p>
+        <p>{{ .Report.Summary.Total }} findings across {{ len .Report.Sources }} source file(s) · generated {{ .GeneratedAt }}{{ if .Baseline.Enabled }} · {{ .Baseline.Unchanged }} in baseline{{ end }}</p>
       </div>
       <div class="sources" role="group" aria-label="Filter by SARIF source">
         {{ range .Sources }}<button class="source-chip" type="button" data-source-chip="{{ .Name }}" aria-pressed="false" title="Filter {{ .Name }}"><span>{{ .Name }}</span><strong>{{ .Count }}</strong></button>{{ end }}
@@ -71,6 +71,15 @@ const pageTemplate = `<!doctype html>
           </select>
         </label>
       </div>
+      {{ if .Baseline.HideUnchangedByDefault }}
+      <div class="baseline-row">
+        <label class="baseline-toggle">
+          <input id="show-baseline" type="checkbox">
+          <span>Show baseline findings</span>
+          <strong>{{ .Baseline.Unchanged }}</strong>
+        </label>
+      </div>
+      {{ end }}
       <div class="search-meta">
         <strong id="result-count">{{ .Report.Summary.Total }} shown</strong>
         <button id="reset-filters" type="button">Reset filters</button>
@@ -91,11 +100,12 @@ const pageTemplate = `<!doctype html>
       </div>
       <div id="findings" class="findings-list">
         {{ range .Report.Findings }}
-        <article class="finding" id="{{ .ID }}" data-id="{{ .ID }}" data-severity="{{ .Level }}" data-source="{{ .Source }}" data-tool="{{ .Tool }}" data-rule="{{ .RuleID }}" data-file="{{ .Path }}" data-search="{{ .Source }} {{ .Tool }} {{ .RuleID }} {{ .RuleName }} {{ .Path }} {{ .Message }}">
+        <article class="finding{{ if .IsBaseline }} hidden{{ end }}" id="{{ .ID }}" data-id="{{ .ID }}" data-severity="{{ .Level }}" data-source="{{ .Source }}" data-tool="{{ .Tool }}" data-rule="{{ .RuleID }}" data-file="{{ .Path }}" data-baseline="{{ .IsBaseline }}" data-baseline-state="{{ .BaselineState }}" data-search="{{ .Source }} {{ .Tool }} {{ .RuleID }} {{ .RuleName }} {{ .Path }} {{ .Message }} {{ .BaselineState }}">
           <header class="finding-top">
             <div class="finding-status">
               <a class="finding-id" href="#{{ .ID }}">{{ .ID }}</a>
               <span class="badge {{ severityClass .Level }}">{{ .Level }}</span>
+              {{ if .IsBaseline }}<span class="badge baseline-badge">baseline</span>{{ end }}
             </div>
             <div class="finding-copy">
               <h3>{{ .Message }}</h3>
@@ -178,10 +188,11 @@ const pageTemplate = `<!doctype html>
               </thead>
               <tbody>
                 {{ range .Findings }}
-                <tr class="compact-row" data-id="{{ .ID }}" data-severity="{{ .Level }}" data-source="{{ .Source }}" data-tool="{{ .Tool }}" data-rule="{{ .RuleID }}" data-file="{{ .Path }}" data-search="{{ .Source }} {{ .Tool }} {{ .RuleID }} {{ .RuleName }} {{ .Path }} {{ .Message }}">
+                <tr class="compact-row{{ if .IsBaseline }} hidden{{ end }}" data-id="{{ .ID }}" data-severity="{{ .Level }}" data-source="{{ .Source }}" data-tool="{{ .Tool }}" data-rule="{{ .RuleID }}" data-file="{{ .Path }}" data-baseline="{{ .IsBaseline }}" data-baseline-state="{{ .BaselineState }}" data-search="{{ .Source }} {{ .Tool }} {{ .RuleID }} {{ .RuleName }} {{ .Path }} {{ .Message }} {{ .BaselineState }}">
                   <td>
                     <a class="compact-open" href="#{{ .ID }}" data-open-finding="{{ .ID }}">{{ .ID }}</a>
                     <span class="severity-text {{ severityClass .Level }}">{{ .Level }}</span>
+                    {{ if .IsBaseline }}<span class="baseline-text">baseline</span>{{ end }}
                   </td>
                   <td>
                     <strong>{{ .Message }}</strong>
@@ -439,6 +450,37 @@ p { color: var(--muted); }
   grid-template-columns: repeat(4, minmax(150px, 1fr));
   gap: 10px;
 }
+.baseline-row {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-start;
+}
+.baseline-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fffaf1;
+  color: var(--text);
+  padding: 6px 12px;
+  text-transform: none;
+  font-size: 13px;
+  font-weight: 780;
+  letter-spacing: 0;
+}
+.baseline-toggle input {
+  width: 17px;
+  min-height: 17px;
+  margin: 0;
+  accent-color: var(--teal);
+}
+.baseline-toggle strong {
+  min-width: 24px;
+  color: var(--teal-strong);
+  text-align: right;
+}
 .search-meta {
   display: flex;
   align-items: center;
@@ -688,6 +730,11 @@ code {
 .sev-warning { border-color: #dfbf67; background: #fff7df; color: var(--warning); }
 .sev-note { border-color: #96cec7; background: #eef8f5; color: var(--note); }
 .sev-none { border-color: #cdd2d7; background: #f3f4f5; color: var(--none); }
+.baseline-badge {
+  border-color: #91cac4;
+  background: #edf9f7;
+  color: var(--teal-strong);
+}
 .empty-state {
   padding: 30px;
   color: var(--muted);
@@ -825,6 +872,14 @@ code {
   border-radius: 999px;
   background: currentColor;
 }
+.baseline-text {
+  display: inline-flex;
+  margin-top: 5px;
+  color: var(--teal-strong);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: lowercase;
+}
 .compact-table td:nth-child(2) strong {
   display: block;
   color: var(--ink);
@@ -887,6 +942,7 @@ const reportJS = `
   const source = document.getElementById("source");
   const rule = document.getElementById("rule");
   const file = document.getElementById("file");
+  const showBaseline = document.getElementById("show-baseline");
   const reset = document.getElementById("reset-filters");
   const resultCount = document.getElementById("result-count");
   const emptyState = document.getElementById("empty-state");
@@ -924,13 +980,18 @@ const reportJS = `
     return !source.value || row.dataset.source === source.value;
   }
 
+  function matchesBaseline(row) {
+    return row.dataset.baseline !== "true" || (showBaseline && showBaseline.checked);
+  }
+
   function matches(row) {
     const query = search.value.trim().toLowerCase();
     return (!query || row.dataset.search.toLowerCase().includes(query))
       && (!severity.value || row.dataset.severity === severity.value)
       && matchesSource(row)
       && (!rule.value || row.dataset.rule === rule.value)
-      && (!file.value || row.dataset.file === file.value);
+      && (!file.value || row.dataset.file === file.value)
+      && matchesBaseline(row);
   }
 
   function applyFilters() {
@@ -970,6 +1031,9 @@ const reportJS = `
       applyFilters();
     });
   });
+  if (showBaseline) {
+    showBaseline.addEventListener("change", applyFilters);
+  }
   sourceChips.forEach(chip => {
     chip.addEventListener("click", function () {
       const sourceName = chip.dataset.sourceChip;
@@ -1008,6 +1072,9 @@ const reportJS = `
   });
   reset.addEventListener("click", function () {
     controls.forEach(input => input.value = "");
+    if (showBaseline) {
+      showBaseline.checked = false;
+    }
     selectedSources.clear();
     syncSourceChips();
     applyFilters();

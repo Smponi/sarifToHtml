@@ -2,6 +2,7 @@ package html
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/url"
@@ -46,6 +47,13 @@ func Render(reportData report.Report, options Options) ([]byte, error) {
 	}
 
 	data := NewTemplateData(reportData, options)
+	return RenderTemplateData(data, options)
+}
+
+// RenderTemplateData renders a prebuilt TemplateData value with the embedded or
+// custom template. It is useful for dry-run validation and tests that need the
+// exact same versioned data contract used by Render.
+func RenderTemplateData(data TemplateData, options Options) ([]byte, error) {
 	tmpl, err := loadTemplate(options.TemplatePath, options)
 	if err != nil {
 		return nil, err
@@ -58,96 +66,120 @@ func Render(reportData report.Report, options Options) ([]byte, error) {
 	return output.Bytes(), nil
 }
 
+// MarshalTemplateData returns the versioned template data as stable,
+// human-readable JSON for template authors and CI validation workflows.
+func MarshalTemplateData(data TemplateData) ([]byte, error) {
+	output, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("marshal template data: %w", err)
+	}
+	return append(output, '\n'), nil
+}
+
 // TemplateData is the stable, versioned data contract exposed to custom report
 // templates. It intentionally mirrors the useful renderer data without making
 // the private renderer implementation part of the public template API.
 type TemplateData struct {
-	SchemaVersion string
-	Report        TemplateReport
-	Title         string
-	GeneratedAt   string
-	Severities    []Count
-	Sources       []Count
-	ToolGroups    []ToolGroup
-	Rules         []Count
-	Files         []Count
+	SchemaVersion string           `json:"schemaVersion"`
+	Report        TemplateReport   `json:"report"`
+	Title         string           `json:"title"`
+	GeneratedAt   string           `json:"generatedAt"`
+	Severities    []Count          `json:"severities"`
+	Sources       []Count          `json:"sources"`
+	ToolGroups    []ToolGroup      `json:"toolGroups"`
+	Rules         []Count          `json:"rules"`
+	Files         []Count          `json:"files"`
+	Baseline      TemplateBaseline `json:"baseline"`
 }
 
 // TemplateReport is the report shape exposed to TemplateData v1.
 type TemplateReport struct {
-	Title    string
-	Sources  []string
-	Findings []TemplateFinding
-	Summary  TemplateSummary
+	Title    string            `json:"title"`
+	Sources  []string          `json:"sources"`
+	Findings []TemplateFinding `json:"findings"`
+	Summary  TemplateSummary   `json:"summary"`
 }
 
 // TemplateSummary stores aggregate counts exposed to TemplateData v1.
 type TemplateSummary struct {
-	Total      int
-	BySeverity map[string]int
-	ByTool     map[string]int
-	ByRule     map[string]int
-	ByFile     map[string]int
+	Total           int            `json:"total"`
+	BySeverity      map[string]int `json:"bySeverity"`
+	ByTool          map[string]int `json:"byTool"`
+	ByRule          map[string]int `json:"byRule"`
+	ByFile          map[string]int `json:"byFile"`
+	ByBaselineState map[string]int `json:"byBaselineState"`
 }
 
 // TemplateFinding is the finding shape exposed to TemplateData v1.
 type TemplateFinding struct {
-	ID          string
-	Source      string
-	Tool        string
-	ToolVersion string
+	ID          string `json:"id"`
+	Source      string `json:"source"`
+	Tool        string `json:"tool"`
+	ToolVersion string `json:"toolVersion"`
 
-	RuleID          string
-	RuleName        string
-	RuleDescription string
-	RuleHelpURI     string
+	RuleID          string `json:"ruleID"`
+	RuleName        string `json:"ruleName"`
+	RuleDescription string `json:"ruleDescription"`
+	RuleHelpURI     string `json:"ruleHelpURI"`
 
-	Level   string
-	Message string
+	Level   string `json:"level"`
+	Message string `json:"message"`
 
-	Path      string
-	URI       string
-	URIBaseID string
+	Path      string `json:"path"`
+	URI       string `json:"uri"`
+	URIBaseID string `json:"uriBaseID"`
 
-	StartLine   int
-	StartColumn int
-	EndLine     int
-	EndColumn   int
+	StartLine   int `json:"startLine"`
+	StartColumn int `json:"startColumn"`
+	EndLine     int `json:"endLine"`
+	EndColumn   int `json:"endColumn"`
 
-	Snippet       string
-	Fingerprint   string
-	BaselineState string
-	SourceLink    string
+	Snippet       string `json:"snippet"`
+	Fingerprint   string `json:"fingerprint"`
+	BaselineState string `json:"baselineState"`
+	IsBaseline    bool   `json:"isBaseline"`
+	SourceLink    string `json:"sourceLink"`
 
-	RelatedLocations []TemplateRelatedLocation
-	CodeFlows        []TemplateCodeFlow
+	RelatedLocations []TemplateRelatedLocation `json:"relatedLocations"`
+	CodeFlows        []TemplateCodeFlow        `json:"codeFlows"`
 }
 
 // TemplateRelatedLocation is a secondary location exposed to TemplateData v1.
 type TemplateRelatedLocation struct {
-	Message     string
-	Path        string
-	URI         string
-	StartLine   int
-	StartColumn int
+	Message     string `json:"message"`
+	Path        string `json:"path"`
+	URI         string `json:"uri"`
+	StartLine   int    `json:"startLine"`
+	StartColumn int    `json:"startColumn"`
 }
 
 // TemplateCodeFlow is a normalized execution path exposed to TemplateData v1.
 type TemplateCodeFlow struct {
-	Locations []TemplateRelatedLocation
+	Locations []TemplateRelatedLocation `json:"locations"`
 }
 
 // Count is a named aggregate used by filters, summaries, and custom templates.
 type Count struct {
-	Name  string
-	Count int
+	Name  string `json:"name"`
+	Count int    `json:"count"`
 }
 
 // ToolGroup contains findings grouped by their normalized tool name.
 type ToolGroup struct {
-	Name     string
-	Count    int
-	Findings []TemplateFinding
+	Name     string            `json:"name"`
+	Count    int               `json:"count"`
+	Findings []TemplateFinding `json:"findings"`
+}
+
+// TemplateBaseline describes baseline behavior and aggregate counts for
+// TemplateData v1.
+type TemplateBaseline struct {
+	Enabled                bool           `json:"enabled"`
+	HideUnchangedByDefault bool           `json:"hideUnchangedByDefault"`
+	Unchanged              int            `json:"unchanged"`
+	New                    int            `json:"new"`
+	ByState                map[string]int `json:"byState"`
+	States                 []Count        `json:"states"`
 }
 
 // NewTemplateData builds the TemplateData v1 contract from normalized report
@@ -172,6 +204,7 @@ func NewTemplateData(reportData report.Report, options Options) TemplateData {
 		ToolGroups:    groupedFindingsByTool(templateReport.Findings),
 		Rules:         orderedCounts(reportData.Summary.ByRule, nil),
 		Files:         orderedCounts(reportData.Summary.ByFile, nil),
+		Baseline:      newTemplateBaseline(reportData),
 	}
 }
 
@@ -186,11 +219,12 @@ func newTemplateReport(reportData report.Report, options Options) TemplateReport
 		Sources:  append([]string(nil), reportData.Sources...),
 		Findings: findings,
 		Summary: TemplateSummary{
-			Total:      reportData.Summary.Total,
-			BySeverity: cloneCounts(reportData.Summary.BySeverity),
-			ByTool:     cloneCounts(reportData.Summary.ByTool),
-			ByRule:     cloneCounts(reportData.Summary.ByRule),
-			ByFile:     cloneCounts(reportData.Summary.ByFile),
+			Total:           reportData.Summary.Total,
+			BySeverity:      cloneCounts(reportData.Summary.BySeverity),
+			ByTool:          cloneCounts(reportData.Summary.ByTool),
+			ByRule:          cloneCounts(reportData.Summary.ByRule),
+			ByFile:          cloneCounts(reportData.Summary.ByFile),
+			ByBaselineState: cloneCounts(reportData.Summary.ByBaselineState),
 		},
 	}
 }
@@ -243,11 +277,27 @@ func newTemplateFinding(finding report.Finding, options Options) TemplateFinding
 		Snippet:          finding.Snippet,
 		Fingerprint:      finding.Fingerprint,
 		BaselineState:    finding.BaselineState,
+		IsBaseline:       report.IsBaselineFinding(finding),
 		RelatedLocations: relatedLocations,
 		CodeFlows:        codeFlows,
 	}
 	templateFinding.SourceLink = sourceLink(templateFinding, options)
 	return templateFinding
+}
+
+func newTemplateBaseline(reportData report.Report) TemplateBaseline {
+	byState := cloneCounts(reportData.Summary.ByBaselineState)
+	if byState == nil {
+		byState = map[string]int{}
+	}
+	return TemplateBaseline{
+		Enabled:                len(byState) > 0,
+		HideUnchangedByDefault: byState[report.BaselineStateUnchanged] > 0,
+		Unchanged:              byState[report.BaselineStateUnchanged],
+		New:                    byState[report.BaselineStateNew],
+		ByState:                byState,
+		States:                 orderedCounts(byState, []string{report.BaselineStateNew, report.BaselineStateUpdated, report.BaselineStateUnchanged, report.BaselineStateAbsent}),
+	}
 }
 
 func cloneCounts(values map[string]int) map[string]int {

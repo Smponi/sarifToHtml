@@ -45,7 +45,7 @@
           <tbody>
             <tr><td><code>cmd/sarif-html</code></td><td>CLI flags, file I/O, CI exit-code behavior, and renderer option wiring.</td></tr>
             <tr><td><code>internal/sarif</code></td><td>Focused SARIF 2.1.0 model and JSON parsing.</td></tr>
-            <tr><td><code>internal/report</code></td><td>Normalization into findings, summaries, fingerprints, snippets, and merged reports.</td></tr>
+            <tr><td><code>internal/report</code></td><td>Normalization into findings, summaries, fingerprints, snippets, baselines, and merged reports.</td></tr>
             <tr><td><code>internal/html</code></td><td>Versioned template data, the embedded default template, and custom HTML rendering.</td></tr>
             <tr><td><code>docs</code></td><td>Project documentation as static HTML pages.</td></tr>
             <tr><td><code>examples</code></td><td>Small SARIF examples for development and demos.</td></tr>
@@ -64,7 +64,7 @@
 
         <div class="note">
           <strong>Why this boundary exists</strong>
-          <p>Renderers should not depend directly on raw SARIF JSON. The internal report model is where duplicate handling, severity behavior, fingerprints, snippet hydration, and future baseline states can stay controlled.</p>
+          <p>Renderers should not depend directly on raw SARIF JSON. The internal report model is where duplicate handling, severity behavior, fingerprints, snippet hydration, and baseline state matching stay controlled.</p>
         </div>
 
         <div class="note">

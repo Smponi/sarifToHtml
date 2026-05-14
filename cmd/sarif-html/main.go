@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
@@ -23,11 +24,16 @@ type cliConfig struct {
 	outPath           string
 	title             string
 	templatePath      string
+	templateDataOut   string
+	baselinePath      string
+	baselineOut       string
+	baselineOverwrite bool
 	repoURL           string
 	revision          string
 	sourceURLTemplate string
 	sourceRoots       []string
 	failOn            string
+	dryRun            bool
 	showVersion       bool
 	inputs            []string
 }
@@ -54,6 +60,9 @@ func run(args []string) error {
 	if len(config.inputs) == 0 {
 		return fmt.Errorf("at least one SARIF input file is required")
 	}
+	if err := validateStdoutTargets(config); err != nil {
+		return err
+	}
 
 	reports, err := loadReports(config.inputs)
 	if err != nil {
@@ -64,20 +73,52 @@ func run(args []string) error {
 	if err := report.HydrateSnippets(&reportData, config.sourceRoots); err != nil {
 		return err
 	}
+	if config.baselinePath != "" {
+		baseline, err := loadBaseline(config.baselinePath)
+		if err != nil {
+			return err
+		}
+		report.ApplyBaseline(&reportData, baseline)
+	}
 
 	renderOptions := sourceLinkOptions(config.repoURL, config.revision, config.sourceURLTemplate)
 	renderOptions.Title = config.title
 	renderOptions.TemplatePath = config.templatePath
 
-	output, err := htmlreport.Render(reportData, renderOptions)
+	templateData := htmlreport.NewTemplateData(reportData, renderOptions)
+
+	output, err := htmlreport.RenderTemplateData(templateData, renderOptions)
 	if err != nil {
 		return err
 	}
-	if err := writeOutput(config.outPath, output); err != nil {
-		return err
+
+	if config.templateDataOut != "" {
+		templateDataOutput, err := htmlreport.MarshalTemplateData(templateData)
+		if err != nil {
+			return err
+		}
+		if err := writeOutput(config.templateDataOut, templateDataOutput); err != nil {
+			return err
+		}
+	}
+	if config.baselineOut != "" {
+		baselineOutput, err := report.MarshalBaseline(report.NewBaseline(reportData))
+		if err != nil {
+			return err
+		}
+		if err := writeBaselineOutput(config.baselineOut, baselineOutput, config.baselineOverwrite); err != nil {
+			return err
+		}
 	}
 
-	return enforceFailOn(config.failOn, reportData.Findings)
+	if !config.dryRun {
+		if err := writeOutput(config.outPath, output); err != nil {
+			return err
+		}
+		return enforceFailOn(config.failOn, reportData.Findings)
+	}
+
+	return nil
 }
 
 // parseConfig owns all CLI flag defaults and compatibility behavior. The rest
@@ -90,12 +131,17 @@ func parseConfig(args []string) (cliConfig, error) {
 	outPath := flags.String("out", "report.html", "output HTML file path, or - for stdout")
 	title := flags.String("title", "SARIF HTML Report", "report title")
 	templatePath := flags.String("template", "", "custom Go html/template file or directory; default uses the built-in report template")
+	templateDataOut := flags.String("template-data-out", "", "write the versioned template data JSON to this path, or - for stdout")
+	baselinePath := flags.String("baseline", "", "baseline JSON file used to mark unchanged findings")
+	baselineOut := flags.String("baseline-out", "", "write a versioned baseline JSON file from the current findings, or - for stdout")
+	baselineOverwrite := flags.Bool("baseline-overwrite", false, "overwrite an existing baseline output file without prompting")
 	repoURL := flags.String("repo-url", "", "repository URL for source links")
 	revision := flags.String("revision", "", "repository revision, branch, tag, or commit for source links")
 	sourceURLTemplate := flags.String("source-url-template", "", "URL template for source links; supports {path}, {line}, {lineFragment}, and {revision}")
 	sourceRoots := sourceRootFlag{values: []string{"."}}
 	flags.Var(&sourceRoots, "source-root", "source root used to load missing snippets; may be repeated")
-	failOn := flags.String("fail-on", "", "exit with code 2 when a finding at or above severity exists: error, warning, note, none")
+	failOn := flags.String("fail-on", "", "exit with code 2 when a non-baseline finding at or above severity exists: error, warning, note, none")
+	dryRun := flags.Bool("dry-run", false, "load SARIF and execute the selected template without writing the HTML report or applying --fail-on")
 	showVersion := flags.Bool("version", false, "print version")
 
 	if err := flags.Parse(reorderFlags(args)); err != nil {
@@ -106,11 +152,16 @@ func parseConfig(args []string) (cliConfig, error) {
 		outPath:           *outPath,
 		title:             *title,
 		templatePath:      *templatePath,
+		templateDataOut:   *templateDataOut,
+		baselinePath:      *baselinePath,
+		baselineOut:       *baselineOut,
+		baselineOverwrite: *baselineOverwrite,
 		repoURL:           *repoURL,
 		revision:          *revision,
 		sourceURLTemplate: *sourceURLTemplate,
 		sourceRoots:       sourceRoots.values,
 		failOn:            *failOn,
+		dryRun:            *dryRun,
 		showVersion:       *showVersion,
 		inputs:            flags.Args(),
 	}, nil
@@ -156,6 +207,23 @@ func loadReport(input string) (report.Report, error) {
 	return report.FromSARIF(log, filepath.Base(input)), nil
 }
 
+func loadBaseline(path string) (report.Baseline, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return report.Baseline{}, fmt.Errorf("open baseline %s: %w", path, err)
+	}
+
+	baseline, parseErr := report.ParseBaseline(file)
+	closeErr := file.Close()
+	if parseErr != nil {
+		return report.Baseline{}, fmt.Errorf("parse baseline %s: %w", path, parseErr)
+	}
+	if closeErr != nil {
+		return report.Baseline{}, fmt.Errorf("close baseline %s: %w", path, closeErr)
+	}
+	return baseline, nil
+}
+
 // writeOutput centralizes the file/stdout split used by both normal report
 // generation and tests.
 func writeOutput(outPath string, output []byte) error {
@@ -172,6 +240,38 @@ func writeOutput(outPath string, output []byte) error {
 	return nil
 }
 
+func writeBaselineOutput(outPath string, output []byte, overwrite bool) error {
+	if outPath == "-" {
+		return writeOutput(outPath, output)
+	}
+
+	if _, err := os.Stat(outPath); err == nil && !overwrite {
+		confirmed, err := confirmOverwrite(outPath, os.Stdin, os.Stderr)
+		if err != nil {
+			return err
+		}
+		if !confirmed {
+			return fmt.Errorf("baseline output %s already exists; not overwritten", outPath)
+		}
+	} else if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("stat baseline output %s: %w", outPath, err)
+	}
+
+	return writeOutput(outPath, output)
+}
+
+func confirmOverwrite(path string, input io.Reader, output io.Writer) (bool, error) {
+	if _, err := fmt.Fprintf(output, "Baseline %s already exists. Overwrite? [y/N]: ", path); err != nil {
+		return false, fmt.Errorf("write overwrite prompt: %w", err)
+	}
+	answer, err := bufio.NewReader(input).ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return false, fmt.Errorf("read overwrite prompt: %w", err)
+	}
+	answer = strings.ToLower(strings.TrimSpace(answer))
+	return answer == "y" || answer == "yes", nil
+}
+
 // enforceFailOn runs after the report is written. CI users still get the HTML
 // artifact even when the command exits with the threshold failure code.
 func enforceFailOn(threshold string, findings []report.Finding) error {
@@ -179,6 +279,9 @@ func enforceFailOn(threshold string, findings []report.Finding) error {
 		return nil
 	}
 	for _, finding := range findings {
+		if report.IsBaselineFinding(finding) {
+			continue
+		}
 		if report.MeetsThreshold(finding.Level, threshold) {
 			return exitError{code: 2, message: fmt.Sprintf("finding %s meets fail-on threshold %s", finding.ID, threshold)}
 		}
@@ -195,6 +298,9 @@ func reorderFlags(args []string) []string {
 		"out":                 true,
 		"title":               true,
 		"template":            true,
+		"template-data-out":   true,
+		"baseline":            true,
+		"baseline-out":        true,
 		"repo-url":            true,
 		"revision":            true,
 		"source-url-template": true,
@@ -227,6 +333,23 @@ func reorderFlags(args []string) []string {
 	}
 
 	return append(flagArgs, positional...)
+}
+
+func validateStdoutTargets(config cliConfig) error {
+	stdoutTargets := 0
+	if !config.dryRun && config.outPath == "-" {
+		stdoutTargets++
+	}
+	if config.templateDataOut == "-" {
+		stdoutTargets++
+	}
+	if config.baselineOut == "-" {
+		stdoutTargets++
+	}
+	if stdoutTargets > 1 {
+		return fmt.Errorf("only one output flag may write to stdout")
+	}
+	return nil
 }
 
 // sourceLinkOptions respects explicit link settings first, then infers a source

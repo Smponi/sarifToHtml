@@ -71,6 +71,45 @@ func TestRenderIncludesFindingsAndSourceLinks(t *testing.T) {
 	}
 }
 
+func TestRenderMarksBaselineFindingsHiddenByDefault(t *testing.T) {
+	reportData := report.Report{
+		Title:   "Baseline Demo",
+		Sources: []string{"demo.sarif"},
+		Findings: []report.Finding{
+			{
+				ID:            "F0001",
+				Source:        "demo.sarif",
+				Tool:          "detekt",
+				RuleID:        "LongMethod",
+				Level:         "error",
+				Message:       "Known finding",
+				Path:          "src/App.kt",
+				StartLine:     12,
+				Fingerprint:   "fingerprint",
+				BaselineState: report.BaselineStateUnchanged,
+			},
+		},
+	}
+	report.RebuildSummary(&reportData)
+
+	output, err := Render(reportData, Options{Title: "Baseline Demo"})
+	if err != nil {
+		t.Fatalf("Render returned error: %v", err)
+	}
+	html := string(output)
+	for _, expected := range []string{
+		"Show baseline findings",
+		`id="show-baseline"`,
+		`class="finding hidden"`,
+		`data-baseline="true"`,
+		`data-baseline-state="unchanged"`,
+	} {
+		if !strings.Contains(html, expected) {
+			t.Fatalf("expected rendered HTML to contain %q, got:\n%s", expected, html)
+		}
+	}
+}
+
 func TestRenderUsesCustomTemplateFile(t *testing.T) {
 	dir := t.TempDir()
 	templatePath := filepath.Join(dir, "report.tmpl")
@@ -157,6 +196,42 @@ func TestRenderUsesCustomTemplateDirectory(t *testing.T) {
 	expected := "3 total via " + TemplateDataVersion
 	if !strings.Contains(string(output), expected) {
 		t.Fatalf("expected custom directory template output to contain %q, got:\n%s", expected, string(output))
+	}
+}
+
+func TestMarshalTemplateDataUsesVersionedJSON(t *testing.T) {
+	data := NewTemplateData(report.Report{
+		Summary: report.Summary{
+			Total:      1,
+			BySeverity: map[string]int{"warning": 1},
+			ByTool:     map[string]int{"demo": 1},
+			ByRule:     map[string]int{"Rule": 1},
+			ByFile:     map[string]int{"src/App.kt": 1},
+		},
+		Findings: []report.Finding{
+			{ID: "F0001", Tool: "demo", RuleID: "Rule", Level: "warning", Path: "src/App.kt", StartLine: 3},
+		},
+	}, Options{
+		Title:             "JSON Contract",
+		Revision:          "abc123",
+		SourceURLTemplate: "https://example.test/{revision}/{path}{lineFragment}",
+	})
+
+	output, err := MarshalTemplateData(data)
+	if err != nil {
+		t.Fatalf("MarshalTemplateData returned error: %v", err)
+	}
+	json := string(output)
+	for _, expected := range []string{
+		`"schemaVersion": "sarif-html.template.v1"`,
+		`"title": "JSON Contract"`,
+		`"sourceLink": "https://example.test/abc123/src/App.kt#L3"`,
+		`"baseline"`,
+		`"findings"`,
+	} {
+		if !strings.Contains(json, expected) {
+			t.Fatalf("expected template data JSON to contain %q, got:\n%s", expected, json)
+		}
 	}
 }
 

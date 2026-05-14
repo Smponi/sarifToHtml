@@ -17,5 +17,15 @@ functions, keep them deterministic and side-effect free; do not expose file
 system, environment, process, network, or "safe HTML" helpers to custom
 templates.
 
+`RenderTemplateData` and `MarshalTemplateData` are part of the template tooling
+surface used by `--dry-run` and `--template-data-out`. Keep them aligned with
+`TemplateDataVersion` so validation and JSON inspection always use the same
+contract as normal rendering.
+
+Baseline display is driven by normalized `Finding.BaselineState` values from
+`internal/report`. The default template hides `unchanged` findings at first
+render and exposes them through the local baseline toggle; custom templates get
+the same information through `.Baseline`, `.BaselineState`, and `.IsBaseline`.
+
 When changing the template or styles, update renderer tests and inspect a
 generated report from `examples/detekt-like.sarif`.
